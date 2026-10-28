@@ -1,0 +1,216 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ------------------------------------------------------------------
+   Interfaz: blanco, negro y grises. Modo claro por defecto.
+   ------------------------------------------------------------------ */
+:root {
+  --fondo: #ffffff;
+  --superficie: #fafafa;
+  --superficie-2: #f4f4f5;
+  --borde: #eaeaea;
+  --borde-fuerte: #d4d4d8;
+  --texto: #171717;
+  --tenue: #666666;
+  --invertido: #ffffff;
+
+  /* Colores con significado (iguales en toda la app) */
+  --n-fuente: #dcfce7;
+  --n-fuente-borde: #16a34a;
+  --n-sumidero: #fee2e2;
+  --n-sumidero-borde: #dc2626;
+  --n-super-fuente: #166534;
+  --n-super-sumidero: #991b1b;
+  --n-intermedio: #f4f4f5;
+  --n-intermedio-borde: #a1a1aa;
+  --n-etiquetado: #fef08a;
+  --n-etiquetado-borde: #ca8a04;
+  --n-camino: #fed7aa;
+  --n-camino-borde: #ea580c;
+  --n-actualizado-borde: #16a34a;
+  --n-lado-s: #bfdbfe;
+  --n-lado-s-borde: #2563eb;
+  --n-lado-t-borde: #a1a1aa;
+  --n-texto: #171717;
+
+  --a-sin-flujo: #d4d4d8;
+  --a-parcial: #3b82f6;
+  --a-saturada: #1e3a8a;
+  --a-directo: #f97316;
+  --a-inverso: #db2777;
+  --a-actualizada: #16a34a;
+  --a-corte: #dc2626;
+  --a-corte-halo: #fecaca;
+  --a-frontera: #f87171;
+  --a-residual: #52525b;
+  --a-sin-efecto: #71717a;
+  --a-aviso: #d97706;
+
+  --zona-s: #eff6ff;
+  --zona-t: #f4f4f5;
+
+  --t-mas: #dcfce7;
+  --t-menos: #fce7f3;
+  --t-fuente: #dbeafe;
+  --t-vacia: #f5f5f5;
+  --t-borde: #d4d4d8;
+
+  --banda-super-fuente: #e9f9ee;
+  --banda-fuente: #f3fcf6;
+  --banda-sumidero: #fef5f5;
+  --banda-super-sumidero: #fdeded;
+
+  --i-inicio: #52525b;
+  --i-camino: #ea580c;
+  --i-actualizado: #16a34a;
+  --i-sin-caminos: #dc2626;
+  --i-corte: #991b1b;
+  --i-valido: #16a34a;
+  --i-invalido: #dc2626;
+  --i-seleccion: #2563eb;
+}
+
+[data-theme="dark"] {
+  --fondo: #0a0a0a;
+  --superficie: #111111;
+  --superficie-2: #1a1a1a;
+  --borde: #262626;
+  --borde-fuerte: #3f3f46;
+  --texto: #ededed;
+  --tenue: #a1a1a1;
+  --invertido: #0a0a0a;
+
+  --n-intermedio: #e4e4e7;
+  --a-sin-flujo: #52525b;
+  --a-saturada: #bfdbfe;
+  --a-residual: #d4d4d8;
+  --a-sin-efecto: #a1a1aa;
+  --a-corte-halo: #7f1d1d;
+  --zona-s: #172554;
+  --zona-t: #1c1c1f;
+  --banda-super-fuente: #0f1f15;
+  --banda-fuente: #0d1711;
+  --banda-sumidero: #1c1011;
+  --banda-super-sumidero: #261315;
+  --t-borde: #52525b;
+}
+
+@theme inline {
+  --color-fondo: var(--fondo);
+  --color-superficie: var(--superficie);
+  --color-superficie-2: var(--superficie-2);
+  --color-borde: var(--borde);
+  --color-borde-fuerte: var(--borde-fuerte);
+  --color-texto: var(--texto);
+  --color-tenue: var(--tenue);
+  --color-invertido: var(--invertido);
+  --font-sans: var(--font-geist-sans), Inter, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+html {
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: var(--font-sans);
+  font-size: 16px;
+}
+
+/* Foco visible para teclado, también en los elementos del grafo */
+:focus-visible {
+  outline: 2px solid var(--texto);
+  outline-offset: 2px;
+}
+.grafo-foco:focus {
+  outline: none;
+}
+.anillo {
+  opacity: 0;
+}
+.grafo-foco:focus-visible .anillo {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------------
+   Animaciones (desactivadas con prefers-reduced-motion)
+   ------------------------------------------------------------------ */
+@keyframes flujo-adelante {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+@keyframes flujo-atras {
+  to {
+    stroke-dashoffset: 24;
+  }
+}
+.flujo-adelante {
+  stroke-dasharray: 6 18;
+  animation: flujo-adelante 0.9s linear infinite;
+}
+.flujo-atras {
+  stroke-dasharray: 6 18;
+  animation: flujo-atras 0.9s linear infinite;
+}
+
+@keyframes temblor {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-5px);
+  }
+  40%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+.temblor {
+  animation: temblor 0.45s ease-in-out 1;
+  transform-box: fill-box;
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.aparecer {
+  animation: aparecer 0.18s ease-out;
+}
+
+@keyframes pulso-ciclo {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+.pulso-ciclo {
+  animation: pulso-ciclo 0.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
