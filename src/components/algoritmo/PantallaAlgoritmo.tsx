@@ -7,6 +7,7 @@ import type { Matriz } from "@/lib/ff/nombres";
 import { type Roles, prepararRed } from "@/lib/ff/red";
 import Encabezado from "../Encabezado";
 import { INSIGNIAS } from "../grafo/estilos";
+import { IconoCorte, TAM_ICONO } from "../iconos";
 import { useTamano } from "../grafo/hooks";
 import { Boton, Insignia, Kbd, Mensaje } from "../ui";
 import { GrafoEvaluador, PanelEvaluador, useEvaluador } from "./Evaluador";
@@ -228,7 +229,14 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
             aria-pressed={evaluando}
             className={evaluando ? "border-texto" : ""}
           >
-            {evaluando ? "← Volver a los pasos" : "✂ Evaluador de cortes"}
+            {evaluando ? (
+              "← Volver a los pasos"
+            ) : (
+              <>
+                <IconoCorte size={TAM_ICONO} aria-hidden="true" className="shrink-0" />
+                Evaluador de cortes
+              </>
+            )}
           </Boton>
           <span id="contador-pasos" className="ml-1 font-mono text-sm text-tenue">
             {indice + 1}/{pasos.length}

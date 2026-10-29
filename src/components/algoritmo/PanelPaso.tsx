@@ -4,6 +4,7 @@ import type { Paso } from "@/lib/ff/algoritmo";
 import { estiloTag } from "../grafo/estilos";
 import type { DatosRed } from "./red";
 import TextoPython from "./TextoPython";
+import { IconoCamino, TAM_ICONO } from "../iconos";
 
 /** Descripción del paso y tabla de etiquetas [padre±, Δ]. */
 export default function PanelPaso({ paso, datos }: { paso: Paso; datos: DatosRed }) {
@@ -22,7 +23,10 @@ export default function PanelPaso({ paso, datos }: { paso: Paso; datos: DatosRed
 
       {paso.cuello_botella > 0 && (
         <p className="flex items-baseline gap-3 rounded-md border border-borde px-3 py-2">
-          <span className="text-xs font-semibold tracking-wider text-tenue uppercase">Δ del camino</span>
+          <span className="flex items-center gap-1.5 self-center text-xs font-semibold tracking-wider text-tenue uppercase">
+            <IconoCamino size={TAM_ICONO} aria-hidden="true" className="shrink-0" />
+            Δ del camino
+          </span>
           <span className="font-mono text-2xl font-semibold">{paso.cuello_botella}</span>
         </p>
       )}

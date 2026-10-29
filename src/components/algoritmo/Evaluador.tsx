@@ -9,6 +9,7 @@ import Lienzo from "../grafo/Lienzo";
 import { medidas } from "../grafo/escala";
 import { TEXTO_OSCURO, estiloNodoBase } from "../grafo/estilos";
 import { useEtiquetas, useGeometria } from "../grafo/hooks";
+import { IconoCorte, TAM_ICONO } from "../iconos";
 import { Boton, Insignia } from "../ui";
 import { LineaCorte } from "./Corte";
 import { type DatosRed, disponerRed } from "./red";
@@ -143,7 +144,10 @@ export function PanelEvaluador({ datos, ev, flujoMaximo }: { datos: DatosRed; ev
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-lg font-semibold">✂ Evaluador de cortes manuales</h2>
+        <h2 className="flex items-center gap-2 text-lg font-semibold">
+          <IconoCorte size={20} aria-hidden="true" className="shrink-0" />
+          Evaluador de cortes manuales
+        </h2>
         <p className="mt-1 text-[15px] text-tenue">
           Elige aristas para cortar. Se omiten, se busca desde la fuente {nom(ev.fuente)} y los nodos alcanzables forman el lado S. El corte
           es válido si el sumidero {nom(ev.sumidero)} queda en T.

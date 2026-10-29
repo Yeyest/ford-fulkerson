@@ -4,6 +4,7 @@ import type { Paso } from "@/lib/ff/algoritmo";
 import { capATexto, listarAristas } from "@/lib/ff/nombres";
 import { type DatosRed, recorrido } from "./red";
 import TextoPython from "./TextoPython";
+import { IconoCamino, IconoCorte, TAM_ICONO } from "../iconos";
 
 /** Pantalla de resultado (paso corte_minimo). */
 export default function Resultado({ pasos, paso, datos, onIr }: { pasos: Paso[]; paso: Paso; datos: DatosRed; onIr: (i: number) => void }) {
@@ -21,7 +22,8 @@ export default function Resultado({ pasos, paso, datos, onIr }: { pasos: Paso[];
       </section>
 
       <section aria-labelledby="titulo-ecuacion">
-        <h2 id="titulo-ecuacion" className="mb-2 text-xs font-semibold tracking-wider text-tenue uppercase">
+        <h2 id="titulo-ecuacion" className="mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-tenue uppercase">
+          <IconoCorte size={TAM_ICONO} aria-hidden="true" className="shrink-0" />
           Corte mínimo = flujo máximo
         </h2>
         <div className="flex flex-wrap items-center gap-1.5 font-mono text-[15px]">
@@ -57,7 +59,8 @@ export default function Resultado({ pasos, paso, datos, onIr }: { pasos: Paso[];
       </section>
 
       <section aria-labelledby="titulo-caminos">
-        <h2 id="titulo-caminos" className="mb-2 text-xs font-semibold tracking-wider text-tenue uppercase">
+        <h2 id="titulo-caminos" className="mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-tenue uppercase">
+          <IconoCamino size={TAM_ICONO} aria-hidden="true" className="shrink-0" />
           Caminos aumentantes ({caminos.length})
         </h2>
         <ol className="flex flex-col gap-1">

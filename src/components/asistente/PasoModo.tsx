@@ -1,6 +1,7 @@
 "use client";
 
 import type { Modo } from "../estado";
+import { ICONO_ETAPA } from "../iconos";
 import type { PropsPaso } from "./Asistente";
 import Pie from "./Pie";
 
@@ -51,7 +52,10 @@ export default function PasoModo({ estado, despachar, onSiguiente, onAnterior }:
   return (
     <>
       <div className="flex flex-1 flex-col px-4 py-6 sm:px-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Modo de generación</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+          <ICONO_ETAPA.modo size={20} aria-hidden="true" className="shrink-0" />
+          Modo de generación
+        </h1>
         <p className="mt-2 text-tenue">¿Cómo quieres construir el grafo de {estado.n} nodos?</p>
         <div role="radiogroup" aria-label="Modo de generación del grafo" className="mt-6 grid max-w-4xl gap-4 sm:grid-cols-2">
           {OPCIONES.map(({ modo, titulo, texto, Ilustracion }, i) => {

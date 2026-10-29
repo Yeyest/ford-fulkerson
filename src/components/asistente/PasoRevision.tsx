@@ -8,6 +8,7 @@ import DibujoRed from "../grafo/DibujoRed";
 import { bandas, crearEscala, orientacionPara } from "../grafo/escala";
 import { estiloNodoBase } from "../grafo/estilos";
 import { matrizActual } from "../estado";
+import { ICONO_ETAPA } from "../iconos";
 import { Mensaje } from "../ui";
 import type { PropsPaso } from "./Asistente";
 import Pie from "./Pie";
@@ -33,7 +34,10 @@ export default function PasoRevision({ estado, despachar, onAnterior }: PropsPas
       <div className="flex flex-1 flex-col gap-4 px-4 py-6 sm:px-6 lg:flex-row">
         <div className="flex min-h-[420px] flex-1 flex-col gap-3 lg:h-[calc(100dvh-230px)]">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Revisión</h1>
+            <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+              <ICONO_ETAPA.revision size={20} aria-hidden="true" className="shrink-0" />
+              Revisión
+            </h1>
             <p className="mt-2 text-tenue">Así queda la red con la que trabajará el algoritmo.</p>
           </div>
           <div className="flex-1 rounded-lg border border-borde bg-superficie">

@@ -4,6 +4,7 @@ import type { Dispatch } from "react";
 import { contarAristas } from "@/lib/ff/editor";
 import { validarCantidadNodos } from "@/lib/ff/entrada";
 import { validarRoles } from "@/lib/ff/red";
+import Creditos from "../Creditos";
 import Encabezado from "../Encabezado";
 import { type Accion, type Estado, type Etapa, claveAleatorio, etapasDe, matrizActual } from "../estado";
 import BarraProgreso from "./BarraProgreso";
@@ -57,6 +58,7 @@ export default function Asistente({ estado, despachar }: { estado: Estado; despa
         {estado.etapa === "grafo" && <PasoGrafo {...comunes} />}
         {estado.etapa === "revision" && <PasoRevision {...comunes} />}
       </main>
+      <Creditos />
     </div>
   );
 }

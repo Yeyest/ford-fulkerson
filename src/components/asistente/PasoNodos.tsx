@@ -2,6 +2,7 @@
 
 import { N_MAX, N_MIN, validarCantidadNodos } from "@/lib/ff/entrada";
 import { Mensaje } from "../ui";
+import { ICONO_ETAPA } from "../iconos";
 import type { PropsPaso } from "./Asistente";
 import Pie from "./Pie";
 import VistaNodos from "./VistaNodos";
@@ -17,7 +18,8 @@ export default function PasoNodos({ estado, despachar, onSiguiente }: PropsPaso)
     <>
       <div className="flex flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:flex-row">
         <section className="w-full shrink-0 lg:w-[380px]" aria-labelledby="titulo-nodos">
-          <h1 id="titulo-nodos" className="text-2xl font-semibold tracking-tight">
+          <h1 id="titulo-nodos" className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+            <ICONO_ETAPA.nodos size={20} aria-hidden="true" className="shrink-0" />
             Cantidad de nodos
           </h1>
           <p className="mt-2 text-tenue">

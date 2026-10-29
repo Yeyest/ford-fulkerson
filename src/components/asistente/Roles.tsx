@@ -8,6 +8,7 @@ import Burbuja from "../grafo/Burbuja";
 import DibujoRed from "../grafo/DibujoRed";
 import { posicionesCuadricula } from "../grafo/escala";
 import { estiloNodoBase } from "../grafo/estilos";
+import { IconoFuente, IconoSumidero, TAM_ICONO } from "../iconos";
 import { Mensaje } from "../ui";
 
 /** Resumen "Fuentes: A, B · Sumideros: H" con el aviso de S / T ficticios. */
@@ -54,9 +55,9 @@ export default function MarcarRoles({
   };
 
   const vacia = Array.from({ length: n }, () => new Array<number>(n).fill(0));
-  const opciones: { rol: Rol; texto: string; color: string }[] = [
-    { rol: "fuente", texto: "Marcar fuente", color: "var(--n-fuente-borde)" },
-    { rol: "sumidero", texto: "Marcar sumidero", color: "var(--n-sumidero-borde)" },
+  const opciones: { rol: Rol; texto: string; color: string; Icono: typeof IconoFuente }[] = [
+    { rol: "fuente", texto: "Marcar fuente", color: "var(--n-fuente-borde)", Icono: IconoFuente },
+    { rol: "sumidero", texto: "Marcar sumidero", color: "var(--n-sumidero-borde)", Icono: IconoSumidero },
   ];
 
   return (
@@ -74,6 +75,7 @@ export default function MarcarRoles({
             }`}
           >
             <span className="h-3 w-3 rounded-full border-2" style={{ borderColor: o.color, background: modo === o.rol ? o.color : "transparent" }} />
+            <o.Icono size={TAM_ICONO} aria-hidden="true" className="shrink-0" />
             {o.texto}
           </button>
         ))}

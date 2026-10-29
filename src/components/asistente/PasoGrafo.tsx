@@ -10,6 +10,7 @@ import DibujoRed, { type Disposicion } from "../grafo/DibujoRed";
 import { bandas, crearEscala, orientacionPara, posicionesCuadricula } from "../grafo/escala";
 import { estiloNodoBase } from "../grafo/estilos";
 import { Boton, Mensaje } from "../ui";
+import { ICONO_ETAPA } from "../iconos";
 import type { PropsPaso } from "./Asistente";
 import Pie from "./Pie";
 
@@ -79,7 +80,8 @@ export default function PasoGrafo({ estado, despachar, onSiguiente, onAnterior }
       <div className="flex flex-1 flex-col gap-4 px-4 py-6 sm:px-6">
         <div className="flex flex-wrap items-end gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
+            <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+              <ICONO_ETAPA.grafo size={20} aria-hidden="true" className="shrink-0" />
               {manual ? "Construye las aristas" : estado.aleatorio.editando ? "Editar el grafo generado" : "Grafo aleatorio"}
             </h1>
             <p className="mt-2 max-w-3xl text-tenue">

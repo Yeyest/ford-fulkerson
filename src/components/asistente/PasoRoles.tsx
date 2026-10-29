@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { validarRoles } from "@/lib/ff/red";
+import { IconoFuente, IconoSumidero } from "../iconos";
 import { Mensaje } from "../ui";
 import type { PropsPaso } from "./Asistente";
 import Pie from "./Pie";
@@ -21,7 +22,13 @@ export default function PasoRoles({ estado, despachar, onSiguiente, onAnterior }
     <>
       <div className="flex flex-1 flex-col gap-4 px-4 py-6 sm:px-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Fuentes y sumideros</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+            <span className="flex shrink-0 items-center" aria-hidden="true">
+              <IconoFuente size={20} />
+              <IconoSumidero size={20} />
+            </span>
+            Fuentes y sumideros
+          </h1>
           <p className="mt-2 max-w-3xl text-tenue">
             {manual
               ? "Una vez construido el grafo, selecciona uno o varios vértices fuente y uno o varios vértices sumidero."
