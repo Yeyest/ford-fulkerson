@@ -12,6 +12,7 @@ import { estiloNodoBase } from "../grafo/estilos";
 import { Boton, Mensaje } from "../ui";
 import { ICONO_ETAPA } from "../iconos";
 import type { PropsPaso } from "./Asistente";
+import EditarNombres from "./EditarNombres";
 import Pie from "./Pie";
 
 /** Disposición por capas (calcular_posiciones_nodos) escalada al lienzo. */
@@ -106,14 +107,17 @@ export default function PasoGrafo({ estado, despachar, onSiguiente, onAnterior }
         {error && <Mensaje nivel="error">{error}</Mensaje>}
 
         {manual ? (
-          <EditorManual
-            editor={estado.manual}
-            onEditor={(e) => (despachar({ tipo: "editorManual", editor: e }), setError(null))}
-            disponer={(w, h) => ({ pts: posicionesCuadricula(estado.n, w, h) })}
-            estiloNodo={(id) => estiloNodoBase(id, ctx)}
-            onFin={continuar}
-          />
-        ) : estado.aleatorio.editando ? (
+          <>
+            <EditarNombres n={estado.n} onNombre={(nodo, nombre) => despachar({ tipo: "nombre", nodo, nombre })} />
+            <EditorManual
+              editor={estado.manual}
+              onEditor={(e) => (despachar({ tipo: "editorManual", editor: e }), setError(null))}
+              disponer={(w, h) => ({ pts: posicionesCuadricula(estado.n, w, h) })}
+              estiloNodo={(id) => estiloNodoBase(id, ctx)}
+              onFin={continuar}
+            />
+          </>
+        ) :estado.aleatorio.editando ? (
           <EditorDelAleatorio key={estado.aleatorio.semilla ?? 0} estado={estado} despachar={despachar} onFin={continuar} />
         ) : (
           <div className="flex min-h-[380px] flex-1 flex-col gap-3">

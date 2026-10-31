@@ -46,6 +46,9 @@ export function validarCantidadNodos(texto: string): { n: number | null; error: 
 export function parsearNodo(texto: string, cantidadNodos: number): number {
   const val = texto.trim().toUpperCase();
   let nodo: number;
+  // Primero los nombres que puso el usuario (sin nombres propios, nombreNodo da A, B, … y esto no cambia nada)
+  const propio = Array.from({ length: cantidadNodos }, (_, v) => nombreNodo(v)).indexOf(texto.trim());
+  if (propio >= 0) return propio;
   if (esDecimal(val)) {
     nodo = pyInt(val)!;
   } else if (val.length === 1 && val >= "A" && val <= "Z") {
