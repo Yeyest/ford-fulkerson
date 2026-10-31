@@ -5,6 +5,7 @@ import { validarRoles } from "@/lib/ff/red";
 import { IconoFuente, IconoSumidero } from "../iconos";
 import { Mensaje } from "../ui";
 import type { PropsPaso } from "./Asistente";
+import EditarNombres from "./EditarNombres";
 import Pie from "./Pie";
 import MarcarRoles from "./Roles";
 
@@ -48,6 +49,7 @@ export default function PasoRoles({ estado, despachar, onSiguiente, onAnterior }
           }}
           errores={errores}
         />
+        <EditarNombres n={estado.n} onNombre={(nodo, nombre) => despachar({ tipo: "nombre", nodo, nombre })} />
       </div>
       <Pie onAnterior={onAnterior} onContinuar={continuar} />
     </>

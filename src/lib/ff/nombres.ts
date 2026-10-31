@@ -11,10 +11,31 @@ export function copiarMatriz(m: Matriz): Matriz {
   return m.map((fila) => fila.slice());
 }
 
-/** nombre_nodo: 0 → A, 1 → B, …; S y T para la super-fuente y el super-sumidero. */
+// shortcut: nombres guardados en el módulo (los fija App en cada render); pasarlos como parámetro si algún día hay dos redes a la vez.
+let personalizados: readonly string[] = [];
+export function fijarNombres(nombres: readonly string[]) {
+  personalizados = nombres;
+}
+
+/** Valida el nombre nuevo del nodo u (de n nodos). Devuelve el error o null. */
+export function validarNombre(nombre: string, u: number, n: number): string | null {
+  const t = nombre.trim();
+  if (!t) return "El nombre no puede estar vacío.";
+  if (t.length > 3) return "Usa como máximo 3 caracteres.";
+  if (t === "S" || t === "T") return "S y T están reservados para el origen y el destino ficticios.";
+  for (let v = 0; v < n; v++) if (v !== u && nombreNodo(v) === t) return `Ya hay un nodo llamado ${t}.`;
+  return null;
+}
+
+/** nombre_nodo: 0 → A, 1 → B, … (o el nombre que puso el usuario); S y T para la super-fuente y el super-sumidero. */
 export function nombreNodo(u: number, superFuente: number | null = null, superSumidero: number | null = null): string {
   if (superFuente !== null && u === superFuente) return "S";
   if (superSumidero !== null && u === superSumidero) return "T";
+  return personalizados[u] || letraNodo(u);
+}
+
+/** Nombre por defecto: 0 → A, 1 → B, …, 26 → AA. */
+export function letraNodo(u: number): string {
   let letra = "";
   let temp = u;
   while (true) {

@@ -16,6 +16,8 @@ export interface Estado {
   n: number;
   modo: Modo | null;
   roles: Roles;
+  /** Nombres que el usuario puso a los nodos ("" = el nombre por defecto A, B, …). */
+  nombres: string[];
   manual: EstadoEditor;
   aleatorio: {
     editor: EstadoEditor;
@@ -35,6 +37,7 @@ export const ESTADO_INICIAL: Estado = {
   n: 8,
   modo: null,
   roles: { fuentes: [], sumideros: [] },
+  nombres: [],
   manual: editorVacio(8),
   aleatorio: { editor: editorVacio(8), semilla: null, clave: null, editando: false },
   aviso: null,
@@ -70,6 +73,7 @@ export type Accion =
   | { tipo: "modo"; modo: Modo }
   | { tipo: "ir"; etapa: Etapa; aviso?: string | null }
   | { tipo: "roles"; roles: Roles }
+  | { tipo: "nombre"; nodo: number; nombre: string }
   | { tipo: "editorManual"; editor: EstadoEditor }
   | { tipo: "editorAleatorio"; editor: EstadoEditor }
   | { tipo: "generar"; semilla?: number }
@@ -88,6 +92,7 @@ export function reductor(e: Estado, a: Accion): Estado {
         nTexto: a.texto,
         n,
         roles: { fuentes: e.roles.fuentes.filter((x) => x < n), sumideros: e.roles.sumideros.filter((x) => x < n) },
+        nombres: e.nombres.slice(0, n),
         manual: redimensionar(e.manual, n),
         aleatorio: { ...e.aleatorio, editor: redimensionar(e.aleatorio.editor, n), clave: null },
       };
@@ -98,6 +103,11 @@ export function reductor(e: Estado, a: Accion): Estado {
       return { ...e, etapa: a.etapa, aviso: a.aviso ?? null };
     case "roles":
       return { ...e, roles: a.roles };
+    case "nombre": {
+      const nombres = e.nombres.slice();
+      nombres[a.nodo] = a.nombre;
+      return { ...e, nombres };
+    }
     case "editorManual":
       return { ...e, manual: a.editor };
     case "editorAleatorio":
