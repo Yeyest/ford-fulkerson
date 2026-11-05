@@ -17,6 +17,7 @@ import {
 import type { Punto } from "@/lib/ff/geometria";
 import { destinosProhibidos } from "@/lib/ff/grafo";
 import { listarAristas, nombreNodo } from "@/lib/ff/nombres";
+import { Move, RotateCcw, Spline } from "lucide-react";
 import Burbuja from "../grafo/Burbuja";
 import type { Disposicion } from "../grafo/DibujoRed";
 import Grafo, { type AristaVista, type NodoVista } from "../grafo/Grafo";
@@ -24,6 +25,7 @@ import Lienzo from "../grafo/Lienzo";
 import { medidas } from "../grafo/escala";
 import { type EstiloNodo, TEXTO_OSCURO } from "../grafo/estilos";
 import { useEtiquetas, useGeometria, useTamano } from "../grafo/hooks";
+import { TAM_ICONO } from "../iconos";
 import { Boton, Kbd, Mensaje } from "../ui";
 import BarraRapida from "./BarraRapida";
 import FormularioArista from "./FormularioArista";
@@ -36,6 +38,9 @@ interface Props {
   estiloNodo: (id: number) => EstiloNodo;
   /** FIN aceptado (desde la barra rápida). */
   onFin: () => void;
+  /** Posiciones de los nodos movidos. Si no se pasan, el editor las guarda por su cuenta. */
+  desplazados?: Desplazados;
+  onDesplazados?: (d: Desplazados) => void;
 }
 
 interface Arrastre {
@@ -45,6 +50,11 @@ interface Arrastre {
   movido: boolean;
 }
 
+type Herramienta = "conectar" | "mover";
+
+/** Posiciones elegidas por el usuario, relativas al lienzo (0–1) para resistir cambios de tamaño. */
+export type Desplazados = ReadonlyMap<number, Punto>;
+
 interface EntradaCapacidad {
   origen: number;
   destino: number;
@@ -53,7 +63,7 @@ interface EntradaCapacidad {
 
 const esCampo = (el: Element | null) => !!el && ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName);
 
-export default function EditorManual({ editor, onEditor, disponer, estiloNodo, onFin }: Props) {
+export default function EditorManual({ editor, onEditor, disponer, estiloNodo, onFin, desplazados: externos, onDesplazados }: Props) {
   const [ref, { w, h }] = useTamano<HTMLDivElement>();
   const convertidorRef = useRef<((x: number, y: number) => Punto) | null>(null);
 
@@ -67,6 +77,24 @@ export default function EditorManual({ editor, onEditor, disponer, estiloNodo, o
   const [temblor, setTemblor] = useState<{ nodo: number; vez: number } | null>(null);
   const [destacarTabla, setDestacarTabla] = useState(0);
   const [preguntarVaciar, setPreguntarVaciar] = useState(false);
+  const [herramienta, setHerramienta] = useState<Herramienta>("conectar");
+  const [propios, setPropios] = useState<Desplazados>(new Map());
+  const desplazados = externos ?? propios;
+  // Durante un arrastre llegan varios movimientos antes de volver a dibujar: se parte siempre del último valor
+  const desplazadosRef = useRef(desplazados);
+  useEffect(() => {
+    desplazadosRef.current = desplazados;
+  });
+  const setDesplazados = useCallback(
+    (d: Desplazados) => {
+      desplazadosRef.current = d;
+      if (onDesplazados) onDesplazados(d);
+      else setPropios(d);
+    },
+    [onDesplazados],
+  );
+  /** Nodo que se está moviendo (para resaltarlo). */
+  const [moviendo, setMoviendo] = useState<number | null>(null);
 
   const m = editor.matriz;
   const n = m.length;
@@ -140,6 +168,41 @@ export default function EditorManual({ editor, onEditor, disponer, estiloNodo, o
     actualRef.current = { seleccion, elegirPar };
   });
 
+  /** Guarda la posición de un nodo (en coordenadas del grafo), dentro de los bordes del lienzo. */
+  const colocar = useCallback(
+    (id: number, punto: Punto) => {
+      if (!w || !h) return;
+      const margen = 24;
+      const x = Math.min(Math.max(punto[0], margen), w - margen);
+      const y = Math.min(Math.max(punto[1], margen), h - margen);
+      setDesplazados(new Map(desplazadosRef.current).set(id, [x / w, y / h]));
+    },
+    [w, h, setDesplazados],
+  );
+
+  /** Mueve un nodo arrastrándolo (herramienta «Mover» o Mayús + arrastrar). */
+  const moverNodo = (id: number, e: ReactPointerEvent<SVGGElement>, convertir: (x: number, y: number) => Punto) => {
+    // Desfase entre el puntero y el centro del nodo, para que no "salte"
+    const centro = desplazados.get(id);
+    const inicio = convertir(e.clientX, e.clientY);
+    const base: Punto = centro ? [centro[0] * w, centro[1] * h] : (disponer(w, h).pts.get(id) ?? inicio);
+    const desfase: Punto = [base[0] - inicio[0], base[1] - inicio[1]];
+    setMoviendo(id);
+    const mover = (ev: PointerEvent) => {
+      const q = convertir(ev.clientX, ev.clientY);
+      colocar(id, [q[0] + desfase[0], q[1] + desfase[1]]);
+    };
+    const terminar = () => {
+      window.removeEventListener("pointermove", mover);
+      window.removeEventListener("pointerup", terminar);
+      window.removeEventListener("pointercancel", terminar);
+      setMoviendo(null);
+    };
+    window.addEventListener("pointermove", mover);
+    window.addEventListener("pointerup", terminar);
+    window.addEventListener("pointercancel", terminar);
+  };
+
   const alBajarEnNodo = (id: number, e: ReactPointerEvent<SVGGElement>) => {
     const convertir = convertidorRef.current;
     if (e.button !== 0 || !convertir) return;
@@ -148,6 +211,11 @@ export default function EditorManual({ editor, onEditor, disponer, estiloNodo, o
     (e.currentTarget as SVGGElement).focus({ preventScroll: true });
     setConfirmacion(null);
     setAristaSel(null);
+    if (herramienta === "mover" || e.shiftKey) {
+      setSeleccion(null);
+      moverNodo(id, e, convertir);
+      return;
+    }
     const inicio: Punto = [e.clientX, e.clientY];
     let movido = false;
     setArrastre({ origen: id, inicio, punto: convertir(e.clientX, e.clientY), movido });
@@ -253,8 +321,47 @@ export default function EditorManual({ editor, onEditor, disponer, estiloNodo, o
               </Boton>
             </span>
           )}
+          <div role="radiogroup" aria-label="Herramienta del editor" className="flex rounded-md border border-borde-fuerte p-0.5">
+            {(
+              [
+                { valor: "conectar", texto: "Conectar", Icono: Spline, ayuda: "Arrastra de un nodo a otro para crear una arista" },
+                { valor: "mover", texto: "Mover nodos", Icono: Move, ayuda: "Arrastra un nodo para cambiarlo de lugar" },
+              ] as const
+            ).map(({ valor, texto, Icono, ayuda }) => (
+              <button
+                key={valor}
+                type="button"
+                role="radio"
+                aria-checked={herramienta === valor}
+                title={ayuda}
+                onClick={() => {
+                  setHerramienta(valor);
+                  cancelar();
+                }}
+                className={`flex h-7 items-center gap-1.5 rounded px-2.5 text-sm ${
+                  herramienta === valor ? "bg-texto text-invertido" : "text-tenue hover:text-texto"
+                }`}
+              >
+                <Icono size={TAM_ICONO - 2} aria-hidden="true" className="shrink-0" />
+                {texto}
+              </button>
+            ))}
+          </div>
+          {desplazados.size > 0 && (
+            <Boton tam="sm" variante="fantasma" onClick={() => setDesplazados(new Map())} title="Devolver los nodos a su posición original">
+              <RotateCcw size={TAM_ICONO - 2} aria-hidden="true" className="shrink-0" />
+              Reordenar
+            </Boton>
+          )}
           <span className="ml-auto hidden text-sm text-tenue xl:inline">
-            Arrastra de un nodo a otro (o toca origen y destino). <Kbd>Ctrl Z</Kbd> <Kbd>Ctrl Y</Kbd> <Kbd>Supr</Kbd>
+            {herramienta === "conectar" ? (
+              <>
+                Arrastra de un nodo a otro (o toca origen y destino). <Kbd>Mayús</Kbd> + arrastrar mueve un nodo.
+              </>
+            ) : (
+              <>Arrastra los nodos para ordenarlos; las aristas los siguen.</>
+            )}{" "}
+            <Kbd>Ctrl Z</Kbd> <Kbd>Ctrl Y</Kbd> <Kbd>Supr</Kbd>
           </span>
         </div>
 
@@ -269,13 +376,20 @@ export default function EditorManual({ editor, onEditor, disponer, estiloNodo, o
           {confirmacion && <span className="sr-only">{confirmacion.texto}</span>}
         </div>
 
-        <div ref={ref} className="relative h-[60dvh] min-h-[360px] rounded-lg border border-borde bg-superficie lg:h-auto lg:min-h-0 lg:flex-1">
+        <div
+          ref={ref}
+          className={`relative h-[60dvh] min-h-[360px] rounded-lg border border-borde bg-superficie lg:h-auto lg:min-h-0 lg:flex-1 ${
+            herramienta === "mover" ? "[&_[data-nodo]]:cursor-grab" : ""
+          } ${moviendo !== null ? "[&_[data-nodo]]:cursor-grabbing" : ""}`}
+        >
           {w > 0 && h > 0 && (
             <Dibujo
               ancho={w}
               alto={h}
               editor={editor}
               disponer={disponer}
+              desplazados={desplazados}
+              moviendo={moviendo}
               estiloNodo={estiloNodo}
               convertidorRef={convertidorRef}
               prohibidos={prohibidos}
@@ -291,7 +405,9 @@ export default function EditorManual({ editor, onEditor, disponer, estiloNodo, o
               ciclo={ciclo}
               temblor={temblor}
               alBajarEnNodo={alBajarEnNodo}
+              onFlechaNodo={(id, dx, dy, actual) => colocar(id, [actual[0] + dx, actual[1] + dy])}
               onTeclaNodo={(id) => {
+                if (herramienta === "mover") return;
                 if (seleccion === null) setSeleccion(id);
                 else if (seleccion === id) setSeleccion(null);
                 else elegirPar(seleccion, id);
@@ -325,6 +441,8 @@ interface PropsDibujo {
   alto: number;
   editor: EstadoEditor;
   disponer: (w: number, h: number) => Disposicion;
+  desplazados: Desplazados;
+  moviendo: number | null;
   estiloNodo: (id: number) => EstiloNodo;
   convertidorRef: { current: ((x: number, y: number) => Punto) | null };
   prohibidos: Set<number>;
@@ -341,6 +459,8 @@ interface PropsDibujo {
   temblor: { nodo: number; vez: number } | null;
   alBajarEnNodo: (id: number, e: ReactPointerEvent<SVGGElement>) => void;
   onTeclaNodo: (id: number) => void;
+  /** Flechas del teclado sobre un nodo: lo desplazan (dx, dy en píxeles del grafo). */
+  onFlechaNodo: (id: number, dx: number, dy: number, actual: Punto) => void;
   onConfirmarEntrada: (e: EntradaCapacidad) => void;
   onEliminar: (u: number, v: number) => void;
   onFondo: () => void;
@@ -350,8 +470,13 @@ function Dibujo(p: PropsDibujo) {
   const { ancho, alto, editor, prohibidos, origenActivo, arrastre, entrada, confirmacion, aristaSel, mensaje, ciclo, temblor } = p;
   const m = editor.matriz;
   const nom = (u: number) => nombreNodo(u);
-  const { pts, bandas, orientacion } = p.disponer(ancho, alto);
-  const med = medidas([...pts.values()], ancho);
+  const disposicion = p.disponer(ancho, alto);
+  const { bandas, orientacion } = disposicion;
+  // Los nodos movidos por el usuario reemplazan la posición calculada
+  const pts = new Map(disposicion.pts);
+  for (const [id, [x, y]] of p.desplazados) if (pts.has(id)) pts.set(id, [x * ancho, y * alto]);
+  // El tamaño de los nodos sale de la disposición original: no cambia al acercar dos nodos
+  const med = medidas([...disposicion.pts.values()], ancho);
   const pares = listarAristas(m);
   const geo = useGeometria(pts, pares, med.radio, ancho, alto);
   const textos = new Map(pares.map(([u, v]) => [`${u}-${v}`, String(m[u][v])]));
@@ -372,12 +497,12 @@ function Dibujo(p: PropsDibujo) {
       p: punto,
       ...estilo,
       borde: esOrigen ? "var(--texto)" : nodosCiclo.has(id) ? "var(--a-corte)" : estilo.borde,
-      grosor: esOrigen || nodosCiclo.has(id) ? 3.5 : estilo.grosor,
+      grosor: esOrigen || nodosCiclo.has(id) || id === p.moviendo ? 3.5 : estilo.grosor,
       colorTexto: estilo.colorTexto ?? TEXTO_OSCURO,
       atenuado: prohibido,
       prohibido,
       tiembla: temblor?.nodo === id ? temblor.vez : false,
-      rotulo: `Nodo ${nom(id)}${esOrigen ? ", origen elegido" : ""}${prohibido ? ", cerraría un ciclo" : ""}`,
+      rotulo: `Nodo ${nom(id)}${esOrigen ? ", origen elegido" : ""}${prohibido ? ", cerraría un ciclo" : ""}. Flechas para moverlo.`,
       enfocable: true,
       presionado: esOrigen,
     };
@@ -430,7 +555,11 @@ function Dibujo(p: PropsDibujo) {
         orientacion={orientacion}
         onNodoPointerDown={p.alBajarEnNodo}
         onNodoTecla={(id, e) => {
-          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); p.onTeclaNodo(id); }
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); p.onTeclaNodo(id); return; }
+          const paso = e.shiftKey ? 40 : 10;
+          const delta: Record<string, Punto> = { ArrowLeft: [-paso, 0], ArrowRight: [paso, 0], ArrowUp: [0, -paso], ArrowDown: [0, paso] };
+          const d = delta[e.key];
+          if (d) { e.preventDefault(); p.onFlechaNodo(id, d[0], d[1], pts.get(id)!); }
         }}
         onAristaClick={(clave, enEtiqueta) => {
           const [u, v] = clave.split("-").map(Number);

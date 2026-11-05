@@ -1,10 +1,14 @@
 // Estado global de la app (asistente + pantalla del algoritmo).
+import type { GrafoImportado } from "@/lib/ff/archivo";
 import { type EstadoEditor, editorDesdeMatriz, editorVacio } from "@/lib/ff/editor";
 import { validarCantidadNodos } from "@/lib/ff/entrada";
 import { generarGrafoAleatorio } from "@/lib/ff/grafo";
 import type { Matriz } from "@/lib/ff/nombres";
 import { PyRandom } from "@/lib/ff/pyrandom";
 import type { Roles } from "@/lib/ff/red";
+
+/** Posición de un nodo relativa al lienzo (0–1 en cada eje). */
+export type PosicionRelativa = [number, number];
 
 export type Modo = "aleatorio" | "manual";
 export type Etapa = "nodos" | "modo" | "roles" | "grafo" | "revision";
@@ -19,6 +23,8 @@ export interface Estado {
   /** Nombres que el usuario puso a los nodos ("" = el nombre por defecto A, B, …). */
   nombres: string[];
   manual: EstadoEditor;
+  /** Nodos que el usuario movió en el editor manual (posición relativa al lienzo). */
+  posicionesManual: ReadonlyMap<number, PosicionRelativa>;
   aleatorio: {
     editor: EstadoEditor;
     semilla: number | null;
@@ -39,6 +45,7 @@ export const ESTADO_INICIAL: Estado = {
   roles: { fuentes: [], sumideros: [] },
   nombres: [],
   manual: editorVacio(8),
+  posicionesManual: new Map(),
   aleatorio: { editor: editorVacio(8), semilla: null, clave: null, editando: false },
   aviso: null,
 };
@@ -75,6 +82,8 @@ export type Accion =
   | { tipo: "roles"; roles: Roles }
   | { tipo: "nombre"; nodo: number; nombre: string }
   | { tipo: "editorManual"; editor: EstadoEditor }
+  | { tipo: "posicionesManual"; posiciones: ReadonlyMap<number, PosicionRelativa> }
+  | { tipo: "importar"; grafo: GrafoImportado }
   | { tipo: "editorAleatorio"; editor: EstadoEditor }
   | { tipo: "generar"; semilla?: number }
   | { tipo: "editarAleatorio"; editando: boolean }
@@ -110,6 +119,22 @@ export function reductor(e: Estado, a: Accion): Estado {
     }
     case "editorManual":
       return { ...e, manual: a.editor };
+    case "posicionesManual":
+      return { ...e, posicionesManual: a.posiciones };
+    case "importar": {
+      // Reemplaza el grafo manual por el del texto pegado (n, nombres y aristas)
+      const { n, nombres, matriz } = a.grafo;
+      return {
+        ...e,
+        nTexto: String(n),
+        n,
+        nombres,
+        roles: { fuentes: e.roles.fuentes.filter((x) => x < n), sumideros: e.roles.sumideros.filter((x) => x < n) },
+        manual: editorDesdeMatriz(matriz),
+        posicionesManual: new Map(),
+        aleatorio: { ...e.aleatorio, editor: redimensionar(e.aleatorio.editor, n), clave: null },
+      };
+    }
     case "editorAleatorio":
       return { ...e, aleatorio: { ...e.aleatorio, editor: a.editor } };
     case "generar": {

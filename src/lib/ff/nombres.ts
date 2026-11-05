@@ -17,15 +17,22 @@ export function fijarNombres(nombres: readonly string[]) {
   personalizados = nombres;
 }
 
-/** Valida el nombre nuevo del nodo u (de n nodos). Devuelve el error o null. */
-export function validarNombre(nombre: string, u: number, n: number): string | null {
-  const t = nombre.trim();
+/** Reglas de forma de un nombre (sin mirar a los demás nodos). Devuelve el error o null. */
+export function errorFormatoNombre(t: string): string | null {
   if (!t) return "El nombre no puede estar vacío.";
   if (t.length > 3) return "Usa como máximo 3 caracteres.";
   // Al escribir aristas "origen,destino,capacidad" una coma partiría el nombre y un número se confundiría con un índice
   if (t.includes(",")) return "El nombre no puede tener comas.";
   if (/^\d+$/.test(t)) return "El nombre no puede ser solo un número.";
   if (t === "S" || t === "T") return "S y T están reservados para el origen y el destino ficticios.";
+  return null;
+}
+
+/** Valida el nombre nuevo del nodo u (de n nodos). Devuelve el error o null. */
+export function validarNombre(nombre: string, u: number, n: number): string | null {
+  const t = nombre.trim();
+  const error = errorFormatoNombre(t);
+  if (error) return error;
   for (let v = 0; v < n; v++) if (v !== u && nombreNodo(v) === t) return `Ya hay un nodo llamado ${t}.`;
   return null;
 }

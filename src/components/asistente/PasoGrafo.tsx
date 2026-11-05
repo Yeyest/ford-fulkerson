@@ -5,6 +5,7 @@ import { MENSAJE_SIN_ARISTAS, contarAristas, finalizar } from "@/lib/ff/editor";
 import { calcularPosicionesNodos } from "@/lib/ff/layout";
 import { type Matriz, nombreNodo } from "@/lib/ff/nombres";
 import type { Roles } from "@/lib/ff/red";
+import TextoDelGrafo from "../editor/ArchivoGrafo";
 import EditorManual from "../editor/EditorManual";
 import DibujoRed, { type Disposicion } from "../grafo/DibujoRed";
 import { bandas, crearEscala, orientacionPara, posicionesCuadricula } from "../grafo/escala";
@@ -108,9 +109,13 @@ export default function PasoGrafo({ estado, despachar, onSiguiente, onAnterior }
 
         {manual ? (
           <>
+            <TextoDelGrafo estado={estado} despachar={despachar} />
             <EditarNombres n={estado.n} onNombre={(nodo, nombre) => despachar({ tipo: "nombre", nodo, nombre })} />
             <EditorManual
+              key={estado.n}
               editor={estado.manual}
+              desplazados={estado.posicionesManual}
+              onDesplazados={(posiciones) => despachar({ tipo: "posicionesManual", posiciones })}
               onEditor={(e) => (despachar({ tipo: "editorManual", editor: e }), setError(null))}
               disponer={(w, h) => ({ pts: posicionesCuadricula(estado.n, w, h) })}
               estiloNodo={(id) => estiloNodoBase(id, ctx)}
