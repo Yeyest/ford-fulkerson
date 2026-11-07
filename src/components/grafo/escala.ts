@@ -89,6 +89,21 @@ export function bandas(encabezados: readonly Encabezado[], e: Escala): Banda[] {
 }
 
 /** Cuadrícula inicial de n nodos (pasos 1-3 del asistente). */
+/**
+ * Reemplaza las posiciones calculadas por las que eligió el usuario al mover nodos
+ * (guardadas relativas al lienzo, 0–1, para que valgan en lienzos de otro tamaño).
+ */
+export function aplicarPosiciones(
+  pts: ReadonlyMap<number, Punto>,
+  posiciones: ReadonlyMap<number, Punto>,
+  ancho: number,
+  alto: number,
+): Map<number, Punto> {
+  const r = new Map(pts);
+  for (const [id, [x, y]] of posiciones) if (r.has(id)) r.set(id, [x * ancho, y * alto]);
+  return r;
+}
+
 export function posicionesCuadricula(n: number, ancho: number, alto: number): Map<number, Punto> {
   const cols = Math.max(2, Math.min(n, Math.round(Math.sqrt((n * ancho) / alto))));
   const filas = Math.ceil(n / cols);

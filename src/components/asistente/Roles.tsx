@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { Punto } from "@/lib/ff/geometria";
 import type { Matriz } from "@/lib/ff/nombres";
 import { nombreNodo } from "@/lib/ff/nombres";
 import { type Rol, type Roles, alternarRol } from "@/lib/ff/red";
@@ -34,12 +35,15 @@ export default function MarcarRoles({
   roles,
   onRoles,
   errores,
+  posiciones,
 }: {
   n: number;
   matriz: Matriz | null;
   roles: Roles;
   onRoles: (r: Roles) => void;
   errores: string[];
+  /** Posiciones de los nodos movidos en el editor manual. */
+  posiciones?: ReadonlyMap<number, Punto>;
 }) {
   const [modo, setModo] = useState<Rol>("fuente");
   const [error, setError] = useState<{ nodo: number; texto: string; vez: number } | null>(null);
@@ -87,6 +91,7 @@ export default function MarcarRoles({
           matriz={matriz ?? vacia}
           etiqueta="Grafo: marcar fuentes y sumideros"
           disponer={(w, h) => ({ pts: posicionesCuadricula(n, w, h) })}
+          posiciones={posiciones}
           nodo={(id) => {
             const rol = ctx.fuentes.has(id) ? ", fuente" : ctx.sumideros.has(id) ? ", sumidero" : "";
             return {

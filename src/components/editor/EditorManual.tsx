@@ -22,7 +22,7 @@ import Burbuja from "../grafo/Burbuja";
 import type { Disposicion } from "../grafo/DibujoRed";
 import Grafo, { type AristaVista, type NodoVista } from "../grafo/Grafo";
 import Lienzo from "../grafo/Lienzo";
-import { medidas } from "../grafo/escala";
+import { aplicarPosiciones, medidas } from "../grafo/escala";
 import { type EstiloNodo, TEXTO_OSCURO } from "../grafo/estilos";
 import { useEtiquetas, useGeometria, useTamano } from "../grafo/hooks";
 import { TAM_ICONO } from "../iconos";
@@ -473,8 +473,7 @@ function Dibujo(p: PropsDibujo) {
   const disposicion = p.disponer(ancho, alto);
   const { bandas, orientacion } = disposicion;
   // Los nodos movidos por el usuario reemplazan la posición calculada
-  const pts = new Map(disposicion.pts);
-  for (const [id, [x, y]] of p.desplazados) if (pts.has(id)) pts.set(id, [x * ancho, y * alto]);
+  const pts = aplicarPosiciones(disposicion.pts, p.desplazados, ancho, alto);
   // El tamaño de los nodos sale de la disposición original: no cambia al acercar dos nodos
   const med = medidas([...disposicion.pts.values()], ancho);
   const pares = listarAristas(m);

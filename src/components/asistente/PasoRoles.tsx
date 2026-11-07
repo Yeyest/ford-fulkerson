@@ -42,6 +42,7 @@ export default function PasoRoles({ estado, despachar, onSiguiente, onAnterior }
         <MarcarRoles
           n={estado.n}
           matriz={manual ? estado.manual.matriz : null}
+          posiciones={manual ? estado.posicionesManual : undefined}
           roles={estado.roles}
           onRoles={(roles) => {
             despachar({ tipo: "roles", roles });

@@ -5,7 +5,7 @@ import type { Curva, Punto } from "@/lib/ff/geometria";
 import { type Matriz, capATexto, listarAristas } from "@/lib/ff/nombres";
 import Grafo, { type AristaVista, type NodoVista } from "./Grafo";
 import Lienzo from "./Lienzo";
-import { type Banda, type Medidas, medidas } from "./escala";
+import { type Banda, type Medidas, aplicarPosiciones, medidas } from "./escala";
 import { useEtiquetas, useGeometria, useTamano } from "./hooks";
 
 export interface Disposicion {
@@ -39,6 +39,8 @@ interface Props {
   onAristaTecla?: (clave: string, e: KeyboardEvent<SVGGElement>) => void;
   encima?: (c: ContextoDibujo) => ReactNode;
   className?: string;
+  /** Nodos que el usuario movió en el editor (relativos al lienzo, 0–1): reemplazan la disposición. */
+  posiciones?: ReadonlyMap<number, Punto>;
 }
 
 /** Dibujo de una red (sin edición): asistente, revisión, grafo aleatorio. */
@@ -63,11 +65,15 @@ function Interno({
   onAristaClick,
   onAristaTecla,
   encima,
+  posiciones,
   ancho,
   alto,
 }: Props & { ancho: number; alto: number }) {
-  const { pts, bandas, orientacion } = disponer(ancho, alto);
-  const m = medidas([...pts.values()], ancho);
+  const disposicion = disponer(ancho, alto);
+  const { bandas, orientacion } = disposicion;
+  const pts = posiciones?.size ? aplicarPosiciones(disposicion.pts, posiciones, ancho, alto) : disposicion.pts;
+  // El tamaño de los nodos sale de la disposición original, igual que en el editor
+  const m = medidas([...disposicion.pts.values()], ancho);
   const pares = listarAristas(matriz);
   const geo = useGeometria(pts, pares, m.radio, ancho, alto);
   const textoDe = texto ?? ((u: number, v: number) => capATexto(matriz[u][v]));
