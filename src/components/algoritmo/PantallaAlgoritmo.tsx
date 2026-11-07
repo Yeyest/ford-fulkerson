@@ -17,6 +17,7 @@ import Leyenda from "./Leyenda";
 import LineaTiempo from "./LineaTiempo";
 import PanelPaso from "./PanelPaso";
 import Resultado from "./Resultado";
+import { retrocesos, usaFlujoInverso } from "./inverso";
 import { type DatosRed, crearDatosRed, iteracionDe } from "./red";
 
 interface Props {
@@ -89,6 +90,15 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
   const [hojaAbierta, setHojaAbierta] = useState(false);
   const [ref, { w, h }] = useTamano<HTMLDivElement>();
   const ev = useEvaluador(datos);
+  // Animación de entrada de la red al empezar el algoritmo
+  // (el tiempo empieza a contar cuando la red ya tiene tamaño y se ve)
+  const [entrada, setEntrada] = useState(true);
+  const visible = w > 0 && h > 0;
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(() => setEntrada(false), 1800);
+    return () => clearTimeout(t);
+  }, [visible]);
 
   const paso = pasos[indice];
   const ultimo = pasos.length - 1;
@@ -141,7 +151,7 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
   ) : paso.tipo === "corte_minimo" ? (
     <Resultado pasos={pasos} paso={paso} datos={datos} onIr={ir} />
   ) : (
-    <PanelPaso paso={paso} datos={datos} />
+    <PanelPaso paso={paso} anterior={indice > 0 ? pasos[indice - 1] : undefined} datos={datos} />
   );
 
   return (
@@ -172,6 +182,11 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
               <span className="font-mono text-2xl">{paso.tipo === "corte_minimo" ? "—" : it}</span>
             </div>
             <Insignia color={insignia.color}>{insignia.texto}</Insignia>
+            {usaFlujoInverso(paso) ? (
+              <Insignia color="var(--a-inverso)">↩ CON FLUJO INVERSO</Insignia>
+            ) : (
+              retrocesos(paso).length > 0 && <Insignia color="var(--a-inverso)">↩ RETROCESO AL ETIQUETAR</Insignia>
+            )}
           </>
         ) : (
           <Insignia color="var(--i-seleccion)">EVALUADOR DE CORTES MANUALES</Insignia>
@@ -200,7 +215,16 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
       {/* Centro: grafo + panel lateral */}
       <div className="flex min-h-0 flex-1">
         <div ref={ref} className="relative min-w-0 flex-1">
-          {w > 0 && h > 0 && (evaluando ? <GrafoEvaluador datos={datos} ev={ev} ancho={w} alto={h} /> : <GrafoPaso datos={datos} paso={paso} vista={vista} ancho={w} alto={h} />)}
+          {w > 0 && h > 0 && (evaluando ? <GrafoEvaluador datos={datos} ev={ev} ancho={w} alto={h} /> : <GrafoPaso
+                datos={datos}
+                paso={paso}
+                anterior={indice > 0 ? pasos[indice - 1] : undefined}
+                idPaso={indice}
+                vista={vista}
+                ancho={w}
+                alto={h}
+                entrada={entrada && indice === 0}
+              />)}
         </div>
         <aside className="hidden w-[400px] shrink-0 overflow-y-auto border-l border-borde p-5 lg:block xl:w-[440px]" aria-label="Detalles del paso">
           {panel}

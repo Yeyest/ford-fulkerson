@@ -3,12 +3,13 @@
 import type { Paso } from "@/lib/ff/algoritmo";
 import { type Curva, type Punto, curva } from "@/lib/ff/geometria";
 import { capATexto, listarAristas } from "@/lib/ff/nombres";
-import Grafo, { type AristaVista, type NodoVista } from "../grafo/Grafo";
+import Grafo, { type AnimacionArista, type AristaVista, type NodoVista } from "../grafo/Grafo";
 import Lienzo from "../grafo/Lienzo";
 import { medidas } from "../grafo/escala";
-import { estiloAristaPaso, estiloNodoPaso, estiloTag, textoFlujo } from "../grafo/estilos";
+import { type EstiloArista, estiloAristaPaso, estiloNodoPaso, estiloTag, textoFlujo } from "../grafo/estilos";
 import { useEtiquetas, useGeometria } from "../grafo/hooks";
 import { LineaCorte, Zonas } from "./Corte";
+import { type Retroceso, duracionTramo, retrocesos } from "./inverso";
 import { type DatosRed, disponerRed } from "./red";
 
 export type Vista = "flujo" | "residual";
@@ -22,7 +23,12 @@ interface Arco {
   /** Arista original (u, v) y si el arco va hacia adelante o hacia atrás. */
   original: string;
   sentido: "+" | "-";
+  /** Flecha de retroceso por flujo inverso (dibujada junto a la arista original, en sentido contrario). */
+  retroceso?: Retroceso;
 }
+
+/** Separación (px en el punto de control) entre una arista y su flecha de retroceso. */
+const SEPARACION_RETROCESO = 46;
 
 /** Arcos de la red residual: c − f hacia adelante y f hacia atrás (campo `residual` del paso). */
 function arcosResiduales(paso: Paso, base: Map<string, Curva>, pares: [number, number][]): Arco[] {
@@ -42,7 +48,28 @@ function arcosResiduales(paso: Paso, base: Map<string, Curva>, pares: [number, n
   return arcos;
 }
 
-export default function GrafoPaso({ datos, paso, vista, ancho, alto }: { datos: DatosRed; paso: Paso; vista: Vista; ancho: number; alto: number }) {
+export default function GrafoPaso({
+  datos,
+  paso,
+  anterior,
+  vista,
+  ancho,
+  alto,
+  entrada = false,
+  idPaso,
+}: {
+  datos: DatosRed;
+  paso: Paso;
+  /** Paso previo: en "flujo_actualizado" se usa para mostrar el valor anterior de cada arista. */
+  anterior?: Paso;
+  vista: Vista;
+  ancho: number;
+  alto: number;
+  /** Animación de entrada de la red (al empezar el algoritmo). */
+  entrada?: boolean;
+  /** Índice del paso: al cambiar, las animaciones del camino empiezan de nuevo. */
+  idPaso?: number;
+}) {
   const { red, ctx, nom } = datos;
   const cap = red.capacidades;
   const { pts, bandas, orientacion } = disponerRed(datos, ancho, alto);
@@ -51,7 +78,16 @@ export default function GrafoPaso({ datos, paso, vista, ancho, alto }: { datos: 
   const base = useGeometria(pts, pares, med.radio, ancho, alto);
 
   const caminoMapa = new Map<string, "+" | "-">(paso.aristas_camino.map(([u, v, s]) => [`${u}-${v}`, s]));
+  // Orden de cada arista original dentro del camino (para animar el recorrido tramo a tramo)
+  const ordenCamino = new Map<string, number>(paso.aristas_camino.map(([u, v], i) => [`${u}-${v}`, i]));
+  const tramo = duracionTramo(paso);
+  const vuelta = paso.aristas_camino.length * tramo + 1200;
+  const actualizado = paso.tipo === "flujo_actualizado" && anterior !== undefined;
   const corte = new Set(paso.aristas_corte.map(([u, v]) => `${u}-${v}`));
+
+  // Retrocesos por flujo inverso (nodos etiquetados con −)
+  const lista = retrocesos(paso);
+  const retroceso = new Map(lista.map((r) => [`${r.nodo}-${r.desde}`, r]));
 
   // Arcos a dibujar según la vista
   const arcos: Arco[] =
@@ -59,9 +95,26 @@ export default function GrafoPaso({ datos, paso, vista, ancho, alto }: { datos: 
       ? pares.map(([u, v]) => {
           const k = `${u}-${v}`;
           const s = paso.tipo === "camino_encontrado" ? caminoMapa.get(k) : undefined;
-          return { clave: k, u, v, geo: base.get(k)!, texto: textoFlujo(paso.flujo[u][v], cap[u][v], s, paso.cuello_botella), original: k, sentido: "+" };
+          // Al actualizar, la etiqueta muestra el cambio: antes→después/c
+          const texto =
+            actualizado && caminoMapa.has(k)
+              ? `${anterior.flujo[u][v]}→${paso.flujo[u][v]}/${capATexto(cap[u][v])}`
+              : textoFlujo(paso.flujo[u][v], cap[u][v], s, paso.cuello_botella);
+          return { clave: k, u, v, geo: base.get(k)!, texto, original: k, sentido: "+" };
         })
       : arcosResiduales(paso, base, pares);
+
+  // En la red de flujo, cada retroceso se dibuja como una flecha propia que va de `desde` a `nodo`,
+  // pegada a la arista nodo→desde: así se ve por dónde «regresa» la búsqueda o el camino.
+  if (vista === "flujo")
+    for (const r of lista) {
+      const k = `${r.nodo}-${r.desde}`;
+      const g = base.get(k);
+      if (!g) continue;
+      const largo = Math.hypot(g.p2[0] - g.p1[0], g.p2[1] - g.p1[1]) || 1;
+      const texto = r.enCamino ? `↩ −${paso.cuello_botella}` : `↩ ${r.flujo}`;
+      arcos.push({ clave: `ret-${k}`, u: r.desde, v: r.nodo, geo: curva(g.p2, g.p1, SEPARACION_RETROCESO / largo - g.rad), texto, original: k, sentido: "-", retroceso: r });
+    }
 
   const geoArcos = new Map(arcos.map((a) => [a.clave, a.geo]));
   const textos = new Map(arcos.map((a) => [a.clave, a.texto]));
@@ -69,9 +122,13 @@ export default function GrafoPaso({ datos, paso, vista, ancho, alto }: { datos: 
 
   const aristas: AristaVista[] = arcos.map((a) => {
     const [u, v] = a.original.split("-").map(Number);
-    let estilo;
+    if (a.retroceso) return aristaRetroceso(a, a.retroceso);
+    let estilo: EstiloArista;
     if (vista === "flujo") {
       estilo = estiloAristaPaso(u, v, paso, cap[u][v], caminoMapa, corte);
+      // Arista recorrida al revés: el camino va por su flecha de retroceso; ella queda en rosa fino
+      if (caminoMapa.get(a.original) === "-" && (paso.tipo === "camino_encontrado" || actualizado))
+        estilo = { color: "var(--a-inverso)", ancho: 2.6 };
     } else {
       const s = caminoMapa.get(a.original);
       const usado = s !== undefined && s === a.sentido;
@@ -79,8 +136,24 @@ export default function GrafoPaso({ datos, paso, vista, ancho, alto }: { datos: 
         // En la red residual el camino recorre los arcos en su propio sentido
         estilo = { color: a.sentido === "+" ? "var(--a-directo)" : "var(--a-inverso)", ancho: 4.5, animacion: "adelante" as const };
       else if (paso.tipo === "flujo_actualizado" && s !== undefined) estilo = { color: "var(--a-actualizada)", ancho: 3.5 };
+      else if (a.sentido === "-" && retroceso.has(a.original)) estilo = { color: "var(--a-inverso)", ancho: 2.6, punteada: true };
       else estilo = { color: "var(--a-residual)", ancho: a.sentido === "+" ? 2 : 1.6, punteada: a.sentido === "-" };
     }
+    // Animaciones del camino: destello y partícula tramo a tramo, desde la fuente hasta el sumidero
+    const signo = caminoMapa.get(a.original);
+    const usado = signo !== undefined && (vista === "flujo" || signo === a.sentido);
+    const inversa = usado && signo === "-";
+    const anim: AnimacionArista = {};
+    // (en la red de flujo, el tramo inverso se anima en su flecha de retroceso)
+    if (paso.tipo === "camino_encontrado" && usado && !(vista === "flujo" && inversa)) {
+      const orden = ordenCamino.get(a.original) ?? 0;
+      const color = inversa ? "var(--a-inverso)" : "var(--a-directo)";
+      anim.trazo = { retardo: orden * tramo, duracion: tramo * 1.6, color };
+      anim.particula = { retardo: orden * tramo, duracion: tramo, periodo: vuelta, color };
+    } else if (actualizado && signo !== undefined && (vista === "flujo" || a.sentido === "+")) {
+      anim.flotante = signo === "+" ? { texto: `+${paso.cuello_botella}`, color: "var(--a-actualizada)" } : { texto: `−${paso.cuello_botella}`, color: "var(--a-inverso)" };
+    }
+    if (entrada) anim.entrada = 150 + (Math.min(pts.get(a.u)![0], pts.get(a.v)![0]) / ancho) * 650;
     const f = paso.flujo[u][v];
     const rotulo =
       vista === "flujo"
@@ -92,15 +165,53 @@ export default function GrafoPaso({ datos, paso, vista, ancho, alto }: { datos: 
       clave: a.clave,
       geo: a.geo,
       ...estilo,
+      halo: inversa && vista === "residual" && paso.tipo === "camino_encontrado" ? "var(--a-inverso-halo)" : estilo.halo,
       etiqueta: { texto: a.texto, pos: etiquetas.get(a.clave)!, borde: estilo.color, negrita: estilo.ancho >= 4 },
-      rotulo,
+      rotulo: inversa ? `${rotulo}. Flujo inverso: se devuelven ${paso.cuello_botella} unidades` : rotulo,
+      anim,
     };
   });
+
+  /** Flecha de retroceso: gruesa y continua si es parte del camino; punteada si solo sirvió para etiquetar. */
+  function aristaRetroceso(a: Arco, r: Retroceso): AristaVista {
+    const color = "var(--a-inverso)";
+    const camino = r.enCamino;
+    const anim: AnimacionArista = {};
+    if (camino && paso.tipo === "camino_encontrado") {
+      const orden = ordenCamino.get(a.original) ?? 0;
+      anim.trazo = { retardo: orden * tramo, duracion: tramo * 1.6, color };
+      anim.particula = { retardo: orden * tramo, duracion: tramo, periodo: vuelta, color };
+    }
+    const n = nom(r.nodo);
+    const d = nom(r.desde);
+    const rotulo = camino
+      ? `Flujo inverso en el camino: de ${d} se regresa a ${n} por la arista ${n} a ${d}, devolviendo ${paso.cuello_botella} unidades`
+      : `Retroceso al etiquetar: de ${d} se llega a ${n} por la arista ${n} a ${d}, que lleva ${r.flujo} de flujo`;
+    return {
+      clave: a.clave,
+      geo: a.geo,
+      color,
+      ancho: camino ? (paso.tipo === "camino_encontrado" ? 4.5 : 3.2) : 2.4,
+      punteada: !camino,
+      halo: camino && paso.tipo === "camino_encontrado" ? "var(--a-inverso-halo)" : undefined,
+      etiqueta: { texto: a.texto, pos: etiquetas.get(a.clave)!, borde: color, color, negrita: camino },
+      rotulo,
+      anim,
+    };
+  }
 
   const nodos: NodoVista[] = [...pts].map(([id, p]) => {
     const e = estiloNodoPaso(id, paso, ctx);
     const tag = estiloTag(id, paso.etiquetas, nom);
-    return { id, nombre: nom(id), p, ...e, tag, rotulo: `Nodo ${nom(id)}, etiqueta ${tag.texto}` };
+    return {
+      id,
+      nombre: nom(id),
+      p,
+      ...e,
+      tag,
+      rotulo: `Nodo ${nom(id)}, etiqueta ${tag.texto}`,
+      entrada: entrada ? (p[0] / ancho) * 650 : undefined,
+    };
   });
 
   // Corte mínimo: zonas S / T y línea de corte por las aristas cortadas
@@ -118,6 +229,7 @@ export default function GrafoPaso({ datos, paso, vista, ancho, alto }: { datos: 
         <Zonas pts={pts} ladoS={paso.conjunto_alcanzable} aristas={pares} radio={med.radio} />
       )}
       <Grafo
+        key={idPaso}
         nodos={nodos}
         aristas={aristas}
         radio={med.radio}

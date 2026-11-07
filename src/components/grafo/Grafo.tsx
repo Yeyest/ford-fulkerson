@@ -1,6 +1,6 @@
 "use client";
 
-import type { KeyboardEvent, PointerEvent } from "react";
+import { type KeyboardEvent, type PointerEvent, useEffect, useRef } from "react";
 import { type Punto, caminoSvg, recortarCurva } from "@/lib/ff/geometria";
 import type { Banda } from "./escala";
 
@@ -22,6 +22,20 @@ export interface NodoVista {
   rotulo: string;
   enfocable?: boolean;
   presionado?: boolean;
+  /** Retardo (ms) de la animación de entrada del nodo; sin valor no se anima. */
+  entrada?: number;
+}
+
+/** Animaciones de una arista; todas se omiten con prefers-reduced-motion. */
+export interface AnimacionArista {
+  /** Destello que recorre la arista (en sentido contrario al dibujo si `reverso`). */
+  trazo?: { retardo: number; duracion: number; reverso?: boolean; color: string };
+  /** Punto que viaja por la arista; con `periodo` se repite. */
+  particula?: { retardo: number; duracion: number; periodo?: number; reverso?: boolean; color: string };
+  /** Texto que sube y se desvanece junto a la etiqueta (por ejemplo "−3"). */
+  flotante?: { texto: string; color: string };
+  /** Retardo (ms) de la animación de entrada (la arista se dibuja de origen a destino). */
+  entrada?: number;
 }
 
 export interface AristaVista {
@@ -38,6 +52,9 @@ export interface AristaVista {
   rotulo: string;
   enfocable?: boolean;
   presionada?: boolean;
+  /** Cartel sobre la etiqueta (por ejemplo "↩ flujo inverso"). */
+  insignia?: { texto: string; color: string };
+  anim?: AnimacionArista;
 }
 
 interface Props {
@@ -143,7 +160,9 @@ export default function Grafo({
             strokeWidth={a.ancho}
             strokeDasharray={a.punteada ? `${a.ancho * 2.4} ${a.ancho * 1.8}` : undefined}
             strokeLinecap="round"
-            className={a.pulso ? "pulso-ciclo" : undefined}
+            className={a.pulso ? "pulso-ciclo" : a.anim?.entrada !== undefined ? (a.punteada ? "aparecer-arista" : "dibujar-arista") : undefined}
+            pathLength={a.anim?.entrada !== undefined && !a.punteada ? 1 : undefined}
+            style={a.anim?.entrada !== undefined ? { animationDelay: `${a.anim.entrada}ms` } : undefined}
           />
           {a.animacion && (
             <path
@@ -156,11 +175,39 @@ export default function Grafo({
               className={a.animacion === "adelante" ? "flujo-adelante" : "flujo-atras"}
             />
           )}
-          <Flecha q2={r.q2} dir={r.dir} color={a.color} ancho={a.ancho} />
+          <g
+            className={a.anim?.entrada !== undefined ? "aparecer-arista" : undefined}
+            style={a.anim?.entrada !== undefined ? { animationDelay: `${a.anim.entrada + 350}ms` } : undefined}
+          >
+            <Flecha q2={r.q2} dir={r.dir} color={a.color} ancho={a.ancho} />
+          </g>
           {/* Zona de clic más ancha que la línea */}
           {onAristaClick && <path d={dCompleto} fill="none" stroke="transparent" strokeWidth={16} />}
         </g>
       ))}
+
+      {/* Destellos y partículas que recorren el camino aumentante */}
+      {trazos.map(({ a, dCompleto }) =>
+        a.anim?.trazo ? (
+          <path
+            key={`t${a.clave}`}
+            d={dCompleto}
+            pathLength={1}
+            fill="none"
+            stroke={a.anim.trazo.color}
+            strokeWidth={a.ancho + 5}
+            strokeLinecap="round"
+            strokeOpacity={0.55}
+            className={a.anim.trazo.reverso ? "destello-reverso" : "destello"}
+            style={{ animationDelay: `${a.anim.trazo.retardo}ms`, animationDuration: `${a.anim.trazo.duracion}ms` }}
+            pointerEvents="none"
+            aria-hidden="true"
+          />
+        ) : null,
+      )}
+      {trazos.map(({ a, dCompleto }) =>
+        a.anim?.particula ? <Particula key={`p${a.clave}`} d={dCompleto} radio={Math.max(a.ancho, 4)} {...a.anim.particula} /> : null,
+      )}
 
       {/* Etiquetas de las aristas */}
       {trazos.map(({ a }) => {
@@ -198,6 +245,20 @@ export default function Grafo({
             >
               {texto}
             </text>
+            {a.insignia && <Cartel x={pos[0]} y={pos[1] - h / 2 - 4} fuente={fuenteEtiqueta} {...a.insignia} />}
+            {a.anim?.flotante && (
+              <text
+                x={pos[0] + w / 2 + 4}
+                y={pos[1]}
+                dominantBaseline="central"
+                className="flotar font-mono"
+                fontSize={fuenteEtiqueta + 1}
+                fontWeight={700}
+                fill={a.anim.flotante.color}
+              >
+                {a.anim.flotante.texto}
+              </text>
+            )}
           </g>
         );
       })}
@@ -217,7 +278,11 @@ export default function Grafo({
           onClick={onNodoClick ? () => onNodoClick(n.id) : undefined}
           onKeyDown={onNodoTecla ? (e) => onNodoTecla(n.id, e) : undefined}
         >
-          <g key={String(n.tiembla ?? false)} className={n.tiembla ? "temblor" : undefined}>
+          <g
+            key={String(n.tiembla ?? false)}
+            className={n.tiembla ? "temblor" : n.entrada !== undefined ? "entrar-nodo" : undefined}
+            style={n.entrada !== undefined && !n.tiembla ? { animationDelay: `${n.entrada}ms` } : undefined}
+          >
             <circle className="anillo" cx={n.p[0]} cy={n.p[1]} r={radio + 5} fill="none" stroke="var(--texto)" strokeWidth={2} />
             <circle
               cx={n.p[0]}
@@ -275,6 +340,72 @@ export default function Grafo({
           )}
         </g>
       ))}
+    </g>
+  );
+}
+
+/** Cartel con texto sobre una etiqueta de arista (se dibuja centrado en x, con la base en y). */
+function Cartel({ x, y, texto, color, fuente }: { x: number; y: number; texto: string; color: string; fuente: number }) {
+  const tam = Math.max(fuente, 12);
+  const w = [...texto].length * 0.58 * tam + 12;
+  const h = tam + 7;
+  return (
+    <g aria-hidden="true" className="aparecer-cartel">
+      <rect x={x - w / 2} y={y - h} width={w} height={h} rx={h / 2} fill={color} />
+      <text x={x} y={y - h / 2} textAnchor="middle" dominantBaseline="central" className="font-sans" fontSize={tam} fontWeight={700} fill="#ffffff">
+        {texto}
+      </text>
+    </g>
+  );
+}
+
+/** Punto que viaja por una curva (requestAnimationFrame; no se mueve con prefers-reduced-motion). */
+function Particula({
+  d,
+  radio,
+  retardo,
+  duracion,
+  periodo,
+  reverso,
+  color,
+}: {
+  d: string;
+  radio: number;
+  retardo: number;
+  duracion: number;
+  periodo?: number;
+  reverso?: boolean;
+  color: string;
+}) {
+  const camino = useRef<SVGPathElement>(null);
+  const punto = useRef<SVGCircleElement>(null);
+  useEffect(() => {
+    const p = camino.current;
+    const c = punto.current;
+    if (!p || !c || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const largo = p.getTotalLength();
+    const inicio = performance.now();
+    let id = 0;
+    const cuadro = (t: number) => {
+      const e = t - inicio - retardo;
+      const k = periodo ? ((e % periodo) + periodo) % periodo : e;
+      const q = k / duracion;
+      if (e < 0 || q > 1) c.setAttribute("opacity", "0");
+      else {
+        const pt = p.getPointAtLength((reverso ? 1 - q : q) * largo);
+        c.setAttribute("cx", String(pt.x));
+        c.setAttribute("cy", String(pt.y));
+        c.setAttribute("opacity", "1");
+      }
+      if (periodo || e < duracion) id = requestAnimationFrame(cuadro);
+    };
+    id = requestAnimationFrame(cuadro);
+    return () => cancelAnimationFrame(id);
+  }, [d, retardo, duracion, periodo, reverso]);
+  return (
+    <g pointerEvents="none" aria-hidden="true">
+      <path ref={camino} d={d} fill="none" stroke="none" />
+      <circle ref={punto} r={radio} fill={color} stroke="var(--fondo)" strokeWidth={1.5} opacity={0} />
     </g>
   );
 }
