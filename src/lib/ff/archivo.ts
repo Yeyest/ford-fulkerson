@@ -7,7 +7,7 @@
 //
 // La primera línea da el nombre de los nodos (en orden); cada línea siguiente es una
 // arista "origen,destino,capacidad", el mismo formato de la barra rápida del editor.
-import { N_MAX, N_MIN } from "./entrada.ts";
+import { CAPACIDAD_MAX, N_MAX, N_MIN } from "./entrada.ts";
 import { buscarCaminoDirigido } from "./grafo.ts";
 import { type Matriz, errorFormatoNombre, letraNodo, listarAristas, matrizCeros } from "./nombres.ts";
 
@@ -99,8 +99,8 @@ export function textoAGrafo(texto: string): ResultadoTexto {
     if (v === null) return fallo(`Línea ${linea}: el nodo «${d}» no está en la lista de nodos.`);
     const nomU = nombresVisibles[u];
     const nomV = nombresVisibles[v];
-    if (!/^\+?\d+$/.test(c) || Number(c) <= 0)
-      return fallo(`Línea ${linea}: la capacidad de ${nomU}->${nomV} debe ser un entero mayor a 0 (se leyó «${c}»).`);
+    if (!/^\+?\d+$/.test(c) || Number(c) <= 0 || Number(c) > CAPACIDAD_MAX)
+      return fallo(`Línea ${linea}: la capacidad de ${nomU}->${nomV} debe ser un entero entre 1 y ${CAPACIDAD_MAX} (se leyó «${c}»).`);
     if (u === v) return fallo(`Línea ${linea}: ${nomU}->${nomV} es un auto-bucle (un nodo no puede conectarse consigo mismo).`);
     if (matriz[u][v] > 0) return fallo(`Línea ${linea}: la arista ${nomU}->${nomV} está repetida.`);
     const camino = buscarCaminoDirigido(matriz, v, u);

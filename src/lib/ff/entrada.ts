@@ -77,6 +77,13 @@ export type ResultadoArista =
  * Validación de una arista "origen,destino,capacidad", en el mismo orden que
  * ingresar_grafo_manual: formato → nodos → capacidad → auto-bucle → repetida / ciclo.
  */
+/**
+ * Capacidad máxima de una arista. El «∞» de los nodos virtuales S y T es el número INFINITO
+ * (999 999): con este tope, ni todas las aristas de un nodo juntas (15 × 9 999) llegan a él,
+ * así que S y T nunca limitan el flujo, y ninguna capacidad real se confunde con ∞.
+ */
+export const CAPACIDAD_MAX = 9999;
+
 export function validarArista(m: Matriz, entrada: string): ResultadoArista {
   const n = m.length;
   const partes = entrada.trim().split(",").map((p) => p.trim());
@@ -112,6 +119,9 @@ export function validarArista(m: Matriz, entrada: string): ResultadoArista {
   }
   if (capacidad <= 0) {
     return { tipo: "error", causa: "capacidad", texto: "Error: la capacidad debe ser un entero mayor a 0.", origen, destino };
+  }
+  if (capacidad > CAPACIDAD_MAX) {
+    return { tipo: "error", causa: "capacidad", texto: `Error: la capacidad debe ser como máximo ${CAPACIDAD_MAX}.`, origen, destino };
   }
 
   const nomO = nombreNodo(origen);

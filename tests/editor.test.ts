@@ -155,3 +155,17 @@ describe("nodos virtuales S y T", () => {
     assert.equal(r.nTrabajo, 9);
   });
 });
+
+describe("tope de capacidad", () => {
+  test("se acepta hasta CAPACIDAD_MAX y se rechaza más (para no confundirse con el ∞ de S y T)", async () => {
+    const { CAPACIDAD_MAX, validarArista } = await import("../src/lib/ff/entrada.ts");
+    const { INFINITO, matrizCeros } = await import("../src/lib/ff/nombres.ts");
+    const m = matrizCeros(8);
+    assert.equal(validarArista(m, `A,B,${CAPACIDAD_MAX}`).tipo, "aceptar");
+    const r = validarArista(m, `A,B,${CAPACIDAD_MAX + 1}`);
+    assert.equal(r.tipo, "error");
+    assert.equal(r.tipo === "error" && r.texto, `Error: la capacidad debe ser como máximo ${CAPACIDAD_MAX}.`);
+    // Ni con todas sus aristas al máximo un nodo alcanza el ∞ de los nodos virtuales
+    assert.ok(15 * CAPACIDAD_MAX < INFINITO);
+  });
+});

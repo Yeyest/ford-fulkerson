@@ -46,8 +46,10 @@ test("errores al pegar un grafo", () => {
   assert.match(error("nodos: S, B, C, D, E, F, G, H"), /reservados/);
   assert.match(error("A-B-10"), /Línea 1: .*no es una arista/);
   assert.match(error("nodos: A, B, C, D, E, F, G, H\nA,Z,3"), /Línea 2: el nodo «Z»/);
-  assert.match(error("A,B,cero"), /entero mayor a 0/);
-  assert.match(error("A,B,0"), /entero mayor a 0/);
+  assert.match(error("A,B,cero"), /entero entre 1 y 9999/);
+  assert.match(error("A,B,0"), /entero entre 1 y 9999/);
+  assert.match(error("A,B,10000"), /entero entre 1 y 9999/);
+  assert.equal(textoAGrafo("A,B,9999\nB,G,1").ok, true);
   assert.match(error("A,A,2"), /auto-bucle/);
   assert.match(error("A,B,2\nA,B,3"), /Línea 2: .*repetida/);
   assert.match(error("A,B,2\nB,C,2\nC,A,2"), /Línea 3: .*ciclo \(C → A → B → C\)/);
