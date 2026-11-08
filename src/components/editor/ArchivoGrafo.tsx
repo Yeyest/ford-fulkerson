@@ -6,6 +6,7 @@ import { type GrafoImportado, grafoATexto, textoAGrafo } from "@/lib/ff/archivo"
 import { contarAristas } from "@/lib/ff/editor";
 import type { Matriz } from "@/lib/ff/nombres";
 import { TAM_ICONO } from "../iconos";
+import { DURACION, useOcultarDespues } from "../temporal";
 import { Boton, Mensaje } from "../ui";
 
 /**
@@ -29,6 +30,7 @@ export default function TextoDelGrafo({
   /** Texto escrito o pegado por el usuario; null = mostrar el grafo actual. */
   const [borrador, setBorrador] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ nivel: "ok" | "error"; texto: string } | null>(null);
+  useOcultarDespues(aviso, aviso ? DURACION[aviso.nivel] : 0, () => setAviso(null));
   /** Grafo leído que espera confirmación porque reemplazaría aristas ya creadas. */
   const [pendiente, setPendiente] = useState<GrafoImportado | null>(null);
   const [copiado, setCopiado] = useState(false);

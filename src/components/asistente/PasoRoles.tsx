@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { validarRoles } from "@/lib/ff/red";
 import { IconoFuente, IconoSumidero } from "../iconos";
+import { DURACION, useVisibleDurante } from "../temporal";
 import { Mensaje } from "../ui";
 import type { PropsPaso } from "./Asistente";
 import EditarNombres from "./EditarNombres";
@@ -12,6 +13,7 @@ import MarcarRoles from "./Roles";
 export default function PasoRoles({ estado, despachar, onSiguiente, onAnterior }: PropsPaso) {
   const [errores, setErrores] = useState<string[]>([]);
   const manual = estado.modo === "manual";
+  const verAviso = useVisibleDurante(estado.aviso, DURACION.ok);
 
   const continuar = () => {
     const e = validarRoles(estado.roles);
@@ -37,7 +39,7 @@ export default function PasoRoles({ estado, despachar, onSiguiente, onAnterior }
             Con varias fuentes se agrega un origen ficticio S y con varios sumideros un destino ficticio T, para que el
             algoritmo trabaje con una sola fuente y un solo sumidero.
           </p>
-          {estado.aviso && <Mensaje nivel="ok" className="mt-3 max-w-xl">{estado.aviso}</Mensaje>}
+          {estado.aviso && verAviso && <Mensaje nivel="ok" className="mt-3 max-w-xl">{estado.aviso}</Mensaje>}
         </div>
         <MarcarRoles
           n={estado.n}

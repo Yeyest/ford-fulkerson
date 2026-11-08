@@ -9,6 +9,7 @@ import { bandas, crearEscala, orientacionPara } from "../grafo/escala";
 import { estiloNodoBase } from "../grafo/estilos";
 import { matrizActual } from "../estado";
 import { ICONO_ETAPA } from "../iconos";
+import { DURACION, useVisibleDurante } from "../temporal";
 import { Mensaje } from "../ui";
 import type { PropsPaso } from "./Asistente";
 import Pie from "./Pie";
@@ -22,6 +23,7 @@ export default function PasoRevision({ estado, despachar, onAnterior }: PropsPas
     () => calcularPosicionesNodos(red.nTrabajo, red.capacidades, roles.fuentes, roles.sumideros, red.superFuente, red.superSumidero),
     [red, roles],
   );
+  const verAviso = useVisibleDurante(estado.aviso, DURACION.ok);
   const avisos = useMemo(() => advertirAristasAtipicas(matriz, new Set(roles.fuentes), new Set(roles.sumideros)), [matriz, roles]);
   const atipicas = new Set(avisos.map((a) => `${a.origen}-${a.destino}`));
   const [resaltada, setResaltada] = useState<string | null>(null);
@@ -72,7 +74,7 @@ export default function PasoRevision({ estado, despachar, onAnterior }: PropsPas
         </div>
 
         <aside className="flex w-full shrink-0 flex-col gap-4 lg:h-[calc(100dvh-230px)] lg:w-[360px] lg:overflow-y-auto" aria-live="polite">
-          {estado.aviso && <Mensaje nivel="ok">{estado.aviso}</Mensaje>}
+          {estado.aviso && verAviso && <Mensaje nivel="ok">{estado.aviso}</Mensaje>}
           <section className="rounded-lg border border-borde p-4">
             <h2 className="mb-2 text-sm font-semibold">Red</h2>
             <ResumenRoles roles={roles} />

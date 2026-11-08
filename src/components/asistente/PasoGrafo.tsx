@@ -10,6 +10,7 @@ import EditorManual from "../editor/EditorManual";
 import DibujoRed, { type Disposicion } from "../grafo/DibujoRed";
 import { bandas, crearEscala, orientacionPara, posicionesCuadricula } from "../grafo/escala";
 import { estiloNodoBase } from "../grafo/estilos";
+import { DURACION, useOcultarDespues, useVisibleDurante } from "../temporal";
 import { Boton, Mensaje } from "../ui";
 import { ICONO_ETAPA } from "../iconos";
 import type { PropsPaso } from "./Asistente";
@@ -63,18 +64,20 @@ export default function PasoGrafo({ estado, despachar, onSiguiente, onAnterior }
   const manual = estado.modo === "manual";
   const editor = manual ? estado.manual : estado.aleatorio.editor;
   const sinAristas = contarAristas(editor.matriz) === 0;
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ texto: string } | null>(null);
+  useOcultarDespues(error, DURACION.error, () => setError(null));
   const ctx = { fuentes: new Set(estado.roles.fuentes), sumideros: new Set(estado.roles.sumideros), superFuente: null, superSumidero: null };
   // Cambia con cada grafo nuevo (generado o cargado desde texto), para recalcular la disposición
   const claveVista = `${estado.aleatorio.semilla ?? "texto"}-${estado.aleatorio.importaciones}`;
+  const verGenerado = useVisibleDurante(claveVista, DURACION.ok);
 
   const continuar = () => {
     try {
       const r = finalizar(editor);
-      if (!r.finalizado) return setError(r.mensajes[0].texto);
+      if (!r.finalizado) return setError({ texto: r.mensajes[0].texto });
       onSiguiente(manual ? r.mensajes[0].texto : estado.aleatorio.editando ? r.mensajes[0].texto : "Grafo aleatorio generado correctamente.");
     } catch (e) {
-      setError((e as Error).message);
+      setError({ texto: (e as Error).message });
     }
   };
 
@@ -108,7 +111,7 @@ export default function PasoGrafo({ estado, despachar, onSiguiente, onAnterior }
           )}
         </div>
 
-        {error && <Mensaje nivel="error">{error}</Mensaje>}
+        {error && <Mensaje nivel="error">{error.texto}</Mensaje>}
 
         {manual ? (
           <>
@@ -141,9 +144,13 @@ export default function PasoGrafo({ estado, despachar, onSiguiente, onAnterior }
           </>
         ) : (
           <div className="flex min-h-[380px] flex-1 flex-col gap-3">
-            <Mensaje nivel="ok" className="self-start">
-              Grafo aleatorio generado correctamente.
-            </Mensaje>
+            <div aria-live="polite" className="min-h-[38px]">
+              {verGenerado && (
+                <Mensaje nivel="ok" className="aparecer self-start">
+                  Grafo aleatorio generado correctamente.
+                </Mensaje>
+              )}
+            </div>
             <div className="flex-1 rounded-lg border border-borde bg-superficie">
               <GrafoAleatorio key={claveVista} estado={estado} />
             </div>

@@ -10,6 +10,7 @@ import DibujoRed from "../grafo/DibujoRed";
 import { posicionesCuadricula } from "../grafo/escala";
 import { estiloNodoBase } from "../grafo/estilos";
 import { IconoFuente, IconoSumidero, TAM_ICONO } from "../iconos";
+import { DURACION, useOcultarDespues, useVisibleDurante } from "../temporal";
 import { Mensaje } from "../ui";
 
 /** Resumen "Fuentes: A, B · Sumideros: H" con el aviso de S / T ficticios. */
@@ -47,6 +48,8 @@ export default function MarcarRoles({
 }) {
   const [modo, setModo] = useState<Rol>("fuente");
   const [error, setError] = useState<{ nodo: number; texto: string; vez: number } | null>(null);
+  useOcultarDespues(error, DURACION.error, () => setError(null));
+  const verErrores = useVisibleDurante(errores.length ? errores : null, DURACION.error);
   const ctx = { fuentes: new Set(roles.fuentes), sumideros: new Set(roles.sumideros), superFuente: null, superSumidero: null };
 
   const marcar = (nodo: number, rol: Rol) => {
@@ -124,11 +127,12 @@ export default function MarcarRoles({
       <div aria-live="polite" className="flex flex-col gap-2">
         <ResumenRoles roles={roles} />
         {error && <span className="sr-only">{error.texto}</span>}
-        {errores.map((t) => (
-          <Mensaje key={t} nivel="error">
-            {t}
-          </Mensaje>
-        ))}
+        {verErrores &&
+          errores.map((t) => (
+            <Mensaje key={t} nivel="error">
+              {t}
+            </Mensaje>
+          ))}
       </div>
     </div>
   );

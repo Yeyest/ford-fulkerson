@@ -2,21 +2,23 @@
 
 import { useState } from "react";
 import { letraNodo, nombreNodo, validarNombre } from "@/lib/ff/nombres";
+import { DURACION, useOcultarDespues } from "../temporal";
 
 /** Un campo por nodo para cambiarle el nombre (vacío = vuelve al nombre por defecto). */
 export default function EditarNombres({ n, onNombre }: { n: number; onNombre: (nodo: number, nombre: string) => void }) {
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ texto: string } | null>(null);
+  useOcultarDespues(error, DURACION.error, () => setError(null));
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="mb-1 text-sm text-tenue">Nombres de los nodos (máx. 3 caracteres; deja vacío para volver al original)</legend>
       <div className="flex flex-wrap gap-2">
         {Array.from({ length: n }, (_, id) => (
-          <Campo key={`${id}-${nombreNodo(id)}`} id={id} n={n} onNombre={onNombre} onError={setError} />
+          <Campo key={`${id}-${nombreNodo(id)}`} id={id} n={n} onNombre={onNombre} onError={(e) => setError(e ? { texto: e } : null)} />
         ))}
       </div>
       {error && (
         <p role="alert" className="text-sm text-[var(--a-corte)]">
-          {error}
+          {error.texto}
         </p>
       )}
     </fieldset>

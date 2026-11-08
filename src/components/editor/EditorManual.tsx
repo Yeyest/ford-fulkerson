@@ -26,6 +26,7 @@ import { aplicarPosiciones, medidas } from "../grafo/escala";
 import { type EstiloNodo, TEXTO_OSCURO } from "../grafo/estilos";
 import { useEtiquetas, useGeometria, useTamano } from "../grafo/hooks";
 import { TAM_ICONO } from "../iconos";
+import { DURACION, useOcultarDespues } from "../temporal";
 import { Boton, Kbd, Mensaje } from "../ui";
 import BarraRapida from "./BarraRapida";
 import FormularioArista from "./FormularioArista";
@@ -100,19 +101,10 @@ export default function EditorManual({ editor, onEditor, disponer, estiloNodo, o
   const n = m.length;
   const nom = (u: number) => nombreNodo(u);
 
-  // Los avisos informativos se ocultan solos; los errores quedan hasta la próxima acción
-  useEffect(() => {
-    if (!mensaje || mensaje.nivel === "error" || mensaje.nivel === "aviso") return;
-    const t = setTimeout(() => setMensaje(null), 3500);
-    return () => clearTimeout(t);
-  }, [mensaje]);
-
-  // El ciclo resaltado desaparece a los pocos segundos
-  useEffect(() => {
-    if (!ciclo) return;
-    const t = setTimeout(() => setCiclo(null), 3500);
-    return () => clearTimeout(t);
-  }, [ciclo]);
+  // Todos los mensajes se ocultan solos (los errores duran más, para poder leerlos),
+  // y el ciclo resaltado desaparece junto con su aviso
+  useOcultarDespues(mensaje, mensaje ? DURACION[mensaje.nivel] : 0, () => setMensaje(null));
+  useOcultarDespues(ciclo, DURACION.error, () => setCiclo(null));
 
   const cancelar = useCallback(() => {
     setSeleccion(null);
