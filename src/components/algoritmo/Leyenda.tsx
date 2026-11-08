@@ -18,7 +18,6 @@ const ARISTAS = [
   { texto: "Saturada (f = c)", color: "var(--a-saturada)", ancho: 4 },
   { texto: "Camino: directa (+)", color: "var(--a-directo)", ancho: 4 },
   { texto: "Camino por flujo inverso: regresa ↩ (devuelve flujo)", color: "var(--a-inverso)", ancho: 4 },
-  { texto: "Retroceso al etiquetar (etiqueta −) ↩", color: "var(--a-inverso)", ancho: 2.4, punteada: true },
   { texto: "Recién actualizada", color: "var(--a-actualizada)", ancho: 4 },
   { texto: "Corte mínimo", color: "var(--a-corte)", ancho: 4 },
 ];

@@ -85,9 +85,9 @@ export default function GrafoPaso({
   const actualizado = paso.tipo === "flujo_actualizado" && anterior !== undefined;
   const corte = new Set(paso.aristas_corte.map(([u, v]) => `${u}-${v}`));
 
-  // Retrocesos por flujo inverso (nodos etiquetados con −)
-  const lista = retrocesos(paso);
-  const retroceso = new Map(lista.map((r) => [`${r.nodo}-${r.desde}`, r]));
+  // Flujo inverso que usa el camino aumentante. Los retrocesos que solo sirvieron para
+  // etiquetar un nodo no se dibujan: no cambian el flujo de la arista en esta iteración.
+  const lista = retrocesos(paso).filter((r) => r.enCamino);
 
   // Arcos a dibujar según la vista
   const arcos: Arco[] =
@@ -104,15 +104,15 @@ export default function GrafoPaso({
         })
       : arcosResiduales(paso, base, pares);
 
-  // En la red de flujo, cada retroceso se dibuja como una flecha propia que va de `desde` a `nodo`,
-  // pegada a la arista nodo→desde: así se ve por dónde «regresa» la búsqueda o el camino.
+  // En la red de flujo, cada tramo inverso del camino se dibuja como una flecha propia que va de
+  // `desde` a `nodo`, pegada a la arista nodo→desde: así se ve por dónde «regresa» el camino.
   if (vista === "flujo")
     for (const r of lista) {
       const k = `${r.nodo}-${r.desde}`;
       const g = base.get(k);
       if (!g) continue;
       const largo = Math.hypot(g.p2[0] - g.p1[0], g.p2[1] - g.p1[1]) || 1;
-      const texto = r.enCamino ? `↩ −${paso.cuello_botella}` : `↩ ${r.flujo}`;
+      const texto = `↩ −${paso.cuello_botella}`;
       arcos.push({ clave: `ret-${k}`, u: r.desde, v: r.nodo, geo: curva(g.p2, g.p1, SEPARACION_RETROCESO / largo - g.rad), texto, original: k, sentido: "-", retroceso: r });
     }
 
@@ -136,7 +136,6 @@ export default function GrafoPaso({
         // En la red residual el camino recorre los arcos en su propio sentido
         estilo = { color: a.sentido === "+" ? "var(--a-directo)" : "var(--a-inverso)", ancho: 4.5, animacion: "adelante" as const };
       else if (paso.tipo === "flujo_actualizado" && s !== undefined) estilo = { color: "var(--a-actualizada)", ancho: 3.5 };
-      else if (a.sentido === "-" && retroceso.has(a.original)) estilo = { color: "var(--a-inverso)", ancho: 2.6, punteada: true };
       else estilo = { color: "var(--a-residual)", ancho: a.sentido === "+" ? 2 : 1.6, punteada: a.sentido === "-" };
     }
     // Animaciones del camino: destello y partícula tramo a tramo, desde la fuente hasta el sumidero
@@ -172,29 +171,26 @@ export default function GrafoPaso({
     };
   });
 
-  /** Flecha de retroceso: gruesa y continua si es parte del camino; punteada si solo sirvió para etiquetar. */
+  /** Flecha de retroceso del camino: por ella «regresa» el camino y se devuelve Δ. */
   function aristaRetroceso(a: Arco, r: Retroceso): AristaVista {
     const color = "var(--a-inverso)";
-    const camino = r.enCamino;
+    const encontrado = paso.tipo === "camino_encontrado";
     const anim: AnimacionArista = {};
-    if (camino && paso.tipo === "camino_encontrado") {
+    if (encontrado) {
       const orden = ordenCamino.get(a.original) ?? 0;
       anim.trazo = { retardo: orden * tramo, duracion: tramo * 1.6, color };
       anim.particula = { retardo: orden * tramo, duracion: tramo, periodo: vuelta, color };
     }
     const n = nom(r.nodo);
     const d = nom(r.desde);
-    const rotulo = camino
-      ? `Flujo inverso en el camino: de ${d} se regresa a ${n} por la arista ${n} a ${d}, devolviendo ${paso.cuello_botella} unidades`
-      : `Retroceso al etiquetar: de ${d} se llega a ${n} por la arista ${n} a ${d}, que lleva ${r.flujo} de flujo`;
+    const rotulo = `Flujo inverso en el camino: de ${d} se regresa a ${n} por la arista ${n} a ${d}, devolviendo ${paso.cuello_botella} unidades`;
     return {
       clave: a.clave,
       geo: a.geo,
       color,
-      ancho: camino ? (paso.tipo === "camino_encontrado" ? 4.5 : 3.2) : 2.4,
-      punteada: !camino,
-      halo: camino && paso.tipo === "camino_encontrado" ? "var(--a-inverso-halo)" : undefined,
-      etiqueta: { texto: a.texto, pos: etiquetas.get(a.clave)!, borde: color, color, negrita: camino },
+      ancho: encontrado ? 4.5 : 3.2,
+      halo: encontrado ? "var(--a-inverso-halo)" : undefined,
+      etiqueta: { texto: a.texto, pos: etiquetas.get(a.clave)!, borde: color, color, negrita: true },
       rotulo,
       anim,
     };

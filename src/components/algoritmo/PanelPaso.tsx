@@ -5,13 +5,15 @@ import { estiloTag } from "../grafo/estilos";
 import type { DatosRed } from "./red";
 import TextoPython from "./TextoPython";
 import { IconoCamino, TAM_ICONO } from "../iconos";
-import { type TramoInverso, retrocesos, tramosInversos } from "./inverso";
+import { type TramoInverso, retrocesos, tramosInversos, usaFlujoInverso } from "./inverso";
 
 /** Descripción del paso y tabla de etiquetas [padre±, Δ]. */
 export default function PanelPaso({ paso, anterior, datos }: { paso: Paso; anterior?: Paso; datos: DatosRed }) {
   const { nom, red } = datos;
   const etiquetados = [...paso.etiquetas.keys()];
   const sinEtiqueta = Array.from({ length: red.nTrabajo }, (_, i) => i).filter((u) => !paso.etiquetas.has(u));
+  // La aclaración «← = arista recorrida al revés» solo tiene sentido si el camino usa flujo inverso
+  const descripcion = usaFlujoInverso(paso) ? paso.descripcion : paso.descripcion.replace(/ *\(← = arista recorrida al revés\)/, "");
 
   return (
     <div className="flex flex-col gap-5">
@@ -19,7 +21,7 @@ export default function PanelPaso({ paso, anterior, datos }: { paso: Paso; anter
         <h2 id="titulo-descripcion" className="mb-2 text-xs font-semibold tracking-wider text-tenue uppercase">
           Descripción del paso
         </h2>
-        <TextoPython texto={paso.descripcion} />
+        <TextoPython texto={descripcion} />
       </section>
 
       {paso.cuello_botella > 0 && (
@@ -33,7 +35,6 @@ export default function PanelPaso({ paso, anterior, datos }: { paso: Paso; anter
       )}
 
       <FlujoInverso paso={paso} datos={datos} />
-      <RetrocesosAlEtiquetar paso={paso} datos={datos} />
       {paso.tipo === "flujo_actualizado" && anterior && <CambiosDelFlujo paso={paso} anterior={anterior} datos={datos} />}
 
       <section aria-labelledby="titulo-etiquetas">
@@ -75,6 +76,7 @@ export default function PanelPaso({ paso, anterior, datos }: { paso: Paso; anter
           </tbody>
         </table>
         <p className="mt-2 text-xs text-tenue">El orden (#) es el orden en que se etiquetaron los nodos (búsqueda en anchura).</p>
+        <EtiquetasInversas paso={paso} datos={datos} />
       </section>
     </div>
   );
@@ -111,52 +113,33 @@ function FlujoInverso({ paso, datos }: { paso: Paso; datos: DatosRed }) {
   );
 }
 
-/** Nodos a los que la búsqueda llegó retrocediendo por flujo inverso, sin que ese retroceso esté en el camino. */
-function RetrocesosAlEtiquetar({ paso, datos }: { paso: Paso; datos: DatosRed }) {
+/**
+ * Nota bajo la tabla de etiquetas: nodos etiquetados con − (la búsqueda llegó a ellos por una
+ * arista que ya lleva flujo) cuyo retroceso no forma parte del camino. No se dibujan en el grafo.
+ */
+function EtiquetasInversas({ paso, datos }: { paso: Paso; datos: DatosRed }) {
   const lista = retrocesos(paso).filter((r) => !r.enCamino);
   if (!lista.length) return null;
   const { nom } = datos;
   const final = paso.tipo === "sin_mas_caminos";
   return (
-    <section
-      aria-labelledby="titulo-retrocesos"
-      className="aparecer rounded-md border-2 border-dashed px-3 py-3"
-      style={{ borderColor: "var(--a-inverso)" }}
-    >
-      <h2 id="titulo-retrocesos" className="mb-2 flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--a-inverso)" }}>
-        <span aria-hidden="true" className="text-base">↩</span>
-        {lista.length === 1 ? "Retroceso por flujo inverso al etiquetar" : "Retrocesos por flujo inverso al etiquetar"}
-      </h2>
-      <p className="mb-3 text-[15px] leading-snug">
-        La búsqueda también puede avanzar «hacia atrás» por una arista que ya lleva flujo: ese flujo se podría devolver y
-        mandar por otro lado. En el grafo se ve como una flecha rosada punteada (↩) junto a la arista.
-      </p>
-      <ul className="flex flex-col gap-3">
-        {lista.map((r) => {
-          const n = nom(r.nodo);
-          const d = nom(r.desde);
-          return (
-            <li key={r.nodo} className="rounded-md bg-fondo px-3 py-2 text-[15px] leading-snug">
-              <p className="mb-1.5 flex flex-wrap items-center gap-2 font-mono">
-                <span className="font-semibold">
-                  {d} <span style={{ color: "var(--a-inverso)" }}>↩</span> {n}
-                </span>
-                <span className="text-xs text-tenue">
-                  etiqueta [{d}−, {r.delta}]
-                </span>
-              </p>
-              <p className="text-sm text-tenue">
-                Desde {d} se regresa a {n} por la arista {n}→{d}, que lleva {r.flujo} de flujo. Por eso {n} queda etiquetado
-                con Δ = {r.delta}.{" "}
-                {final
-                  ? `Gracias a este retroceso, ${n} es alcanzable y queda del lado S del corte.`
-                  : `El camino aumentante elegido no pasa por aquí, así que la arista ${n}→${d} no cambia en esta iteración.`}
-              </p>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+    <div className="mt-2 flex flex-col gap-1 text-xs text-tenue">
+      {lista.map((r) => {
+        const n = nom(r.nodo);
+        const d = nom(r.desde);
+        return (
+          <p key={r.nodo}>
+            <span className="font-mono">
+              {n} [{d}−, {r.delta}]
+            </span>
+            : la búsqueda llegó a {n} desde {d} por la arista {n}→{d}, que ya lleva flujo.{" "}
+            {final
+              ? `Por eso ${n} es alcanzable y queda del lado S del corte.`
+              : `El camino elegido no pasa por ahí, así que esa arista no cambia y no se usa flujo inverso.`}
+          </p>
+        );
+      })}
+    </div>
   );
 }
 

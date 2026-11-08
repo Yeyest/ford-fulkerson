@@ -2,7 +2,7 @@
 
 import type { Paso } from "@/lib/ff/algoritmo";
 import { INSIGNIAS } from "../grafo/estilos";
-import { retrocesos, usaFlujoInverso } from "./inverso";
+import { usaFlujoInverso } from "./inverso";
 import { iteracionDe } from "./red";
 
 /** Una marca por paso, con el color de su tipo. Un clic salta a ese paso. */
@@ -15,9 +15,6 @@ export default function LineaTiempo({ pasos, actual, onIr, deshabilitada }: { pa
         const color = INSIGNIAS[p.tipo].color;
         const esActual = i === actual;
         const inverso = p.tipo === "camino_encontrado" && usaFlujoInverso(p);
-        // Retroceso solo al etiquetar (no en el camino): contorno punteado
-        const retroceso = !inverso && p.tipo !== "flujo_actualizado" && retrocesos(p).length > 0;
-        const aviso = inverso ? "usa flujo inverso" : retroceso ? "retrocede por flujo inverso al etiquetar" : "";
         return (
           <li key={i} className={`flex flex-col items-center ${nuevaIteracion && i > 0 ? "ml-2" : ""}`}>
             <span className={`mb-0.5 h-4 font-mono text-[10px] ${esActual ? "text-texto" : "text-tenue"}`} aria-hidden="true">
@@ -27,7 +24,7 @@ export default function LineaTiempo({ pasos, actual, onIr, deshabilitada }: { pa
               type="button"
               disabled={deshabilitada}
               onClick={() => onIr(i)}
-              aria-label={`Paso ${i + 1}: ${INSIGNIAS[p.tipo].texto.toLowerCase()}${aviso ? `, ${aviso}` : ""}`}
+              aria-label={`Paso ${i + 1}: ${INSIGNIAS[p.tipo].texto.toLowerCase()}${inverso ? ", usa flujo inverso" : ""}`}
               aria-current={esActual ? "step" : undefined}
               className="group flex h-7 items-center disabled:cursor-not-allowed"
             >
@@ -35,10 +32,10 @@ export default function LineaTiempo({ pasos, actual, onIr, deshabilitada }: { pa
                 className={`block rounded-full transition-all ${esActual ? "h-7 w-3.5" : "h-4 w-2.5 group-hover:h-5"}`}
                 style={{
                   background: color,
-                  outline: esActual ? "2px solid var(--texto)" : inverso ? "2px solid var(--a-inverso)" : retroceso ? "2px dashed var(--a-inverso)" : undefined,
+                  outline: esActual ? "2px solid var(--texto)" : inverso ? "2px solid var(--a-inverso)" : undefined,
                   outlineOffset: 2,
                 }}
-                title={inverso ? "Este camino usa flujo inverso" : retroceso ? "Al etiquetar se retrocede por flujo inverso" : undefined}
+                title={inverso ? "Este camino usa flujo inverso" : undefined}
               />
             </button>
           </li>

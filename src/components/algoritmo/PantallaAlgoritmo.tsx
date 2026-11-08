@@ -17,7 +17,7 @@ import Leyenda from "./Leyenda";
 import LineaTiempo from "./LineaTiempo";
 import PanelPaso from "./PanelPaso";
 import Resultado from "./Resultado";
-import { retrocesos, usaFlujoInverso } from "./inverso";
+import { usaFlujoInverso } from "./inverso";
 import { type DatosRed, crearDatosRed, iteracionDe } from "./red";
 
 interface Props {
@@ -182,11 +182,7 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
               <span className="font-mono text-2xl">{paso.tipo === "corte_minimo" ? "—" : it}</span>
             </div>
             <Insignia color={insignia.color}>{insignia.texto}</Insignia>
-            {usaFlujoInverso(paso) ? (
-              <Insignia color="var(--a-inverso)">↩ CON FLUJO INVERSO</Insignia>
-            ) : (
-              retrocesos(paso).length > 0 && <Insignia color="var(--a-inverso)">↩ RETROCESO AL ETIQUETAR</Insignia>
-            )}
+            {usaFlujoInverso(paso) && <Insignia color="var(--a-inverso)">↩ CON FLUJO INVERSO</Insignia>}
           </>
         ) : (
           <Insignia color="var(--i-seleccion)">EVALUADOR DE CORTES MANUALES</Insignia>
