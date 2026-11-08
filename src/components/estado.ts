@@ -31,6 +31,8 @@ export interface Estado {
     /** n y roles con los que se generó el grafo; si cambian, se genera otro. */
     clave: string | null;
     editando: boolean;
+    /** Veces que se cargó un grafo desde texto (para volver a calcular la disposición). */
+    importaciones: number;
   };
   /** Mensaje de la última transición (por ejemplo "Grafo acíclico validado…"). */
   aviso: string | null;
@@ -46,7 +48,7 @@ export const ESTADO_INICIAL: Estado = {
   nombres: [],
   manual: editorVacio(8),
   posicionesManual: new Map(),
-  aleatorio: { editor: editorVacio(8), semilla: null, clave: null, editando: false },
+  aleatorio: { editor: editorVacio(8), semilla: null, clave: null, editando: false, importaciones: 0 },
   aviso: null,
 };
 
@@ -84,6 +86,7 @@ export type Accion =
   | { tipo: "editorManual"; editor: EstadoEditor }
   | { tipo: "posicionesManual"; posiciones: ReadonlyMap<number, PosicionRelativa> }
   | { tipo: "importar"; grafo: GrafoImportado }
+  | { tipo: "importarAleatorio"; grafo: GrafoImportado }
   | { tipo: "editorAleatorio"; editor: EstadoEditor }
   | { tipo: "generar"; semilla?: number }
   | { tipo: "editarAleatorio"; editando: boolean }
@@ -135,12 +138,28 @@ export function reductor(e: Estado, a: Accion): Estado {
         aleatorio: { ...e.aleatorio, editor: redimensionar(e.aleatorio.editor, n), clave: null },
       };
     }
+    case "importarAleatorio": {
+      // Reemplaza el grafo aleatorio por el del texto pegado. Tiene los mismos n nodos (lo
+      // comprueba el cuadro de texto), así que las fuentes y los sumideros elegidos siguen valiendo.
+      const { nombres, matriz } = a.grafo;
+      return {
+        ...e,
+        nombres,
+        aleatorio: {
+          ...e.aleatorio,
+          editor: editorDesdeMatriz(matriz),
+          semilla: null,
+          editando: true,
+          importaciones: e.aleatorio.importaciones + 1,
+        },
+      };
+    }
     case "editorAleatorio":
       return { ...e, aleatorio: { ...e.aleatorio, editor: a.editor } };
     case "generar": {
       const semilla = a.semilla ?? Math.floor(Math.random() * 0x7fffffff);
       const m = generarGrafoAleatorio(e.n, e.roles.fuentes, e.roles.sumideros, new PyRandom(semilla));
-      return { ...e, aleatorio: { editor: editorDesdeMatriz(m), semilla, clave: claveAleatorio(e), editando: false } };
+      return { ...e, aleatorio: { editor: editorDesdeMatriz(m), semilla, clave: claveAleatorio(e), editando: false, importaciones: 0 } };
     }
     case "editarAleatorio":
       return { ...e, aleatorio: { ...e.aleatorio, editando: a.editando } };

@@ -1,19 +1,31 @@
 "use client";
 
 import { Check, ClipboardPaste, Copy } from "lucide-react";
-import { type Dispatch, useState } from "react";
+import { useState } from "react";
 import { type GrafoImportado, grafoATexto, textoAGrafo } from "@/lib/ff/archivo";
 import { contarAristas } from "@/lib/ff/editor";
-import type { Accion, Estado } from "../estado";
+import type { Matriz } from "@/lib/ff/nombres";
 import { TAM_ICONO } from "../iconos";
 import { Boton, Mensaje } from "../ui";
 
 /**
- * El grafo manual como texto: se copia para compartirlo y se pega para cargar uno.
- * Mientras no se escriba nada, el cuadro muestra el grafo actual y se actualiza solo.
+ * El grafo como texto (editor manual o grafo aleatorio en edición): se copia para compartirlo
+ * y se pega para cargar uno. Mientras no se escriba nada, el cuadro muestra el grafo actual
+ * y se actualiza solo.
  */
-export default function TextoDelGrafo({ estado, despachar }: { estado: Estado; despachar: Dispatch<Accion> }) {
-  const actual = grafoATexto(estado.manual.matriz, estado.nombres);
+export default function TextoDelGrafo({
+  matriz,
+  nombres,
+  onCargar,
+  comprobar,
+}: {
+  matriz: Matriz;
+  nombres: readonly string[];
+  onCargar: (grafo: GrafoImportado) => void;
+  /** Requisito extra para cargar el grafo leído: devuelve el motivo si no se puede. */
+  comprobar?: (grafo: GrafoImportado) => string | null;
+}) {
+  const actual = grafoATexto(matriz, nombres);
   /** Texto escrito o pegado por el usuario; null = mostrar el grafo actual. */
   const [borrador, setBorrador] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ nivel: "ok" | "error"; texto: string } | null>(null);
@@ -23,7 +35,7 @@ export default function TextoDelGrafo({ estado, despachar }: { estado: Estado; d
 
   const texto = borrador ?? actual;
   const editado = borrador !== null && borrador.trim() !== actual;
-  const aristasActuales = contarAristas(estado.manual.matriz);
+  const aristasActuales = contarAristas(matriz);
   const lineas = Math.min(Math.max(texto.split("\n").length, 4), 12);
 
   const copiar = async () => {
@@ -37,7 +49,7 @@ export default function TextoDelGrafo({ estado, despachar }: { estado: Estado; d
   };
 
   const cargar = (g: GrafoImportado) => {
-    despachar({ tipo: "importar", grafo: g });
+    onCargar(g);
     setPendiente(null);
     setBorrador(null);
     setAviso({ nivel: "ok", texto: `Grafo cargado: ${g.n} nodos y ${contarAristas(g.matriz)} aristas.` });
@@ -47,6 +59,8 @@ export default function TextoDelGrafo({ estado, despachar }: { estado: Estado; d
     setPendiente(null);
     const r = textoAGrafo(texto);
     if (!r.ok) return setAviso({ nivel: "error", texto: `No se cargó el grafo. ${r.error}` });
+    const motivo = comprobar?.(r.grafo);
+    if (motivo) return setAviso({ nivel: "error", texto: `No se cargó el grafo. ${motivo}` });
     setAviso(null);
     if (aristasActuales > 0) setPendiente(r.grafo);
     else cargar(r.grafo);

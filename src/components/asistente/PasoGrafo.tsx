@@ -36,7 +36,6 @@ function GrafoAleatorio({ estado }: Pick<PropsPaso, "estado">) {
   const disponer = useDisposicionCapas(m, estado.roles);
   return (
     <DibujoRed
-      key={estado.aleatorio.semilla ?? 0}
       matriz={m}
       etiqueta="Grafo aleatorio generado"
       disponer={disponer}
@@ -66,6 +65,8 @@ export default function PasoGrafo({ estado, despachar, onSiguiente, onAnterior }
   const sinAristas = contarAristas(editor.matriz) === 0;
   const [error, setError] = useState<string | null>(null);
   const ctx = { fuentes: new Set(estado.roles.fuentes), sumideros: new Set(estado.roles.sumideros), superFuente: null, superSumidero: null };
+  // Cambia con cada grafo nuevo (generado o cargado desde texto), para recalcular la disposición
+  const claveVista = `${estado.aleatorio.semilla ?? "texto"}-${estado.aleatorio.importaciones}`;
 
   const continuar = () => {
     try {
@@ -94,7 +95,9 @@ export default function PasoGrafo({ estado, despachar, onSiguiente, onAnterior }
           </div>
           {!manual && (
             <div className="ml-auto flex flex-wrap items-center gap-2">
-              <span className="font-mono text-xs text-tenue">semilla {estado.aleatorio.semilla}</span>
+              <span className="font-mono text-xs text-tenue">
+                {estado.aleatorio.semilla === null ? "cargado desde texto" : `semilla ${estado.aleatorio.semilla}`}
+              </span>
               <Boton onClick={() => despachar({ tipo: "generar" })}>↻ Regenerar</Boton>
               {!estado.aleatorio.editando && (
                 <Boton variante="primario" onClick={() => despachar({ tipo: "editarAleatorio", editando: true })}>
@@ -109,7 +112,7 @@ export default function PasoGrafo({ estado, despachar, onSiguiente, onAnterior }
 
         {manual ? (
           <>
-            <TextoDelGrafo estado={estado} despachar={despachar} />
+            <TextoDelGrafo matriz={estado.manual.matriz} nombres={estado.nombres} onCargar={(grafo) => despachar({ tipo: "importar", grafo })} />
             <EditarNombres n={estado.n} onNombre={(nodo, nombre) => despachar({ tipo: "nombre", nodo, nombre })} />
             <EditorManual
               key={estado.n}
@@ -123,14 +126,26 @@ export default function PasoGrafo({ estado, despachar, onSiguiente, onAnterior }
             />
           </>
         ) :estado.aleatorio.editando ? (
-          <EditorDelAleatorio key={estado.aleatorio.semilla ?? 0} estado={estado} despachar={despachar} onFin={continuar} />
+          <>
+            <TextoDelGrafo
+              matriz={estado.aleatorio.editor.matriz}
+              nombres={estado.nombres}
+              onCargar={(grafo) => (despachar({ tipo: "importarAleatorio", grafo }), setError(null))}
+              comprobar={(g) =>
+                g.n === estado.n
+                  ? null
+                  : `El texto trae ${g.n} nodos y este grafo tiene ${estado.n}. Las fuentes y los sumideros ya se eligieron para ${estado.n} nodos: para usar otra cantidad, cámbiala en el paso «Nodos» o usa el modo manual.`
+              }
+            />
+            <EditorDelAleatorio key={claveVista} estado={estado} despachar={despachar} onFin={continuar} />
+          </>
         ) : (
           <div className="flex min-h-[380px] flex-1 flex-col gap-3">
             <Mensaje nivel="ok" className="self-start">
               Grafo aleatorio generado correctamente.
             </Mensaje>
             <div className="flex-1 rounded-lg border border-borde bg-superficie">
-              <GrafoAleatorio key={estado.aleatorio.semilla ?? 0} estado={estado} />
+              <GrafoAleatorio key={claveVista} estado={estado} />
             </div>
           </div>
         )}
