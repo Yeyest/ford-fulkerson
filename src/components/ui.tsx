@@ -1,6 +1,6 @@
 "use client";
 
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { type ButtonHTMLAttributes, type ReactNode, useEffect, useId, useRef } from "react";
 import type { Nivel } from "@/lib/ff/editor";
 
 type Variante = "primario" | "secundario" | "fantasma" | "peligro";
@@ -75,4 +75,67 @@ export function Kbd({ children }: { children: ReactNode }) {
 
 export function Tarjeta({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <div className={`rounded-lg border border-borde bg-fondo ${className}`}>{children}</div>;
+}
+
+/**
+ * Ventana de confirmación (dialog nativo en modo modal): bloquea el resto de la página,
+ * se cierra con Escape o «Cancelar» y deja el foco en «Cancelar» para no confirmar por error.
+ */
+export function DialogoConfirmar({
+  abierto,
+  titulo,
+  children,
+  confirmar,
+  onConfirmar,
+  onCancelar,
+}: {
+  abierto: boolean;
+  titulo: string;
+  children: ReactNode;
+  /** Texto del botón que confirma. */
+  confirmar: string;
+  onConfirmar: () => void;
+  onCancelar: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const id = useId();
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (abierto && !d.open) d.showModal();
+    if (!abierto && d.open) d.close();
+  }, [abierto]);
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby={`${id}-titulo`}
+      aria-describedby={`${id}-texto`}
+      onCancel={(e) => {
+        e.preventDefault();
+        onCancelar();
+      }}
+      onClick={(e) => {
+        // Clic en el fondo oscuro (fuera de la caja): cancela
+        if (e.target === e.currentTarget) onCancelar();
+      }}
+      className="fixed inset-0 m-auto h-fit w-[min(92vw,420px)] rounded-lg border border-borde bg-fondo p-0 text-texto shadow-xl backdrop:bg-black/50"
+    >
+      <div className="p-5">
+        <h2 id={`${id}-titulo`} className="text-lg font-semibold">
+          {titulo}
+        </h2>
+        <div id={`${id}-texto`} className="mt-2 text-[15px] text-tenue">
+          {children}
+        </div>
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <Boton autoFocus onClick={onCancelar}>
+            Cancelar
+          </Boton>
+          <Boton variante="primario" onClick={onConfirmar}>
+            {confirmar}
+          </Boton>
+        </div>
+      </div>
+    </dialog>
+  );
 }

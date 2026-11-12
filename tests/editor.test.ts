@@ -202,7 +202,7 @@ describe("límite de conexiones por nodo", () => {
   });
 
   test("con límite, el generador nunca supera 5 entradas ni 5 salidas y, si Python ya lo cumple, da el mismo grafo", () => {
-    const casos: [number, number[], number[]][] = [[10, [0], [9]], [16, [0], [15]], [16, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [15]], [16, [0], [1, 2, 3, 4, 5, 6, 7, 8]]];
+    const casos: [number, number[], number[]][] = [[10, [0], [9]], [12, [0], [11]], [16, [0], [15]], [16, [0, 1], [14, 15]], [16, [0], [1, 2, 3, 4, 5, 6, 7, 8]]];
     for (const [n, F, S] of casos)
       for (let s = 1; s <= 150; s++) {
         const libre = generarGrafoAleatorio(n, F, S, new PyRandom(s));
@@ -211,8 +211,18 @@ describe("límite de conexiones por nodo", () => {
         assert.ok(cumple(m), `semilla ${s}, n=${n}`);
         assert.equal(detectarCiclos(n, m), false);
         if (cumple(libre)) assert.deepEqual(m, libre);
-        // Todos los nodos que no son fuente reciben al menos una arista
+        // Todos los nodos que no son fuente reciben al menos una arista, y los que no son sumidero tienen salida
         for (let v = 0; v < n; v++) if (!F.includes(v)) assert.ok(gradoEntrada(m, v) > 0, `nodo ${v} sin entrada (semilla ${s})`);
+        for (let u = 0; u < n; u++) if (!S.includes(u)) assert.ok(gradoSalida(m, u) > 0, `nodo ${u} sin salida (semilla ${s}, n=${n})`);
       }
   });
+});
+
+test("nodos sueltos: los que no tienen ninguna arista", async () => {
+  const { nodosSueltos } = await import("../src/lib/ff/red.ts");
+  const { matrizCeros } = await import("../src/lib/ff/nombres.ts");
+  const m = matrizCeros(8);
+  m[0][1] = 3;
+  m[1][7] = 2;
+  assert.deepEqual(nodosSueltos(m), [2, 3, 4, 5, 6]);
 });

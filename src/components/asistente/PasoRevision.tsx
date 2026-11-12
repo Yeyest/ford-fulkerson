@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { calcularPosicionesNodos } from "@/lib/ff/layout";
 import { capATexto, listarAristas, nombreNodo } from "@/lib/ff/nombres";
-import { advertirAristasAtipicas, mensajesNodosVirtuales, prepararRed } from "@/lib/ff/red";
+import { advertirAristasAtipicas, mensajesNodosVirtuales, nodosSueltos, prepararRed } from "@/lib/ff/red";
 import DibujoRed from "../grafo/DibujoRed";
 import { bandas, crearEscala, orientacionPara } from "../grafo/escala";
 import { estiloNodoBase } from "../grafo/estilos";
@@ -26,6 +26,8 @@ export default function PasoRevision({ estado, despachar, onAnterior }: PropsPas
   const verAviso = useVisibleDurante(estado.aviso, DURACION.ok);
   const avisos = useMemo(() => advertirAristasAtipicas(matriz, new Set(roles.fuentes), new Set(roles.sumideros)), [matriz, roles]);
   const atipicas = new Set(avisos.map((a) => `${a.origen}-${a.destino}`));
+  const sueltos = useMemo(() => nodosSueltos(matriz), [matriz]);
+  const [nodoResaltado, setNodoResaltado] = useState<number | null>(null);
   const [resaltada, setResaltada] = useState<string | null>(null);
   const ctx = { fuentes: new Set(roles.fuentes), sumideros: new Set(roles.sumideros), superFuente: red.superFuente, superSumidero: red.superSumidero };
   const nom = (u: number) => nombreNodo(u, red.superFuente, red.superSumidero);
@@ -54,7 +56,18 @@ export default function PasoRevision({ estado, despachar, onAnterior }: PropsPas
                   orientacion: e.orientacion,
                 };
               }}
-              nodo={(id) => ({ id, nombre: nom(id), ...estiloNodoBase(id, ctx), rotulo: `Nodo ${nom(id)}` })}
+              nodo={(id) => {
+                const suelto = sueltos.includes(id);
+                const base = estiloNodoBase(id, ctx);
+                return {
+                  id,
+                  nombre: nom(id),
+                  ...base,
+                  // Nodo suelto: borde de aviso punteado (más grueso al pasar por su mensaje)
+                  ...(suelto ? { borde: "var(--a-aviso)", punteado: true, grosor: nodoResaltado === id ? 4 : 2.5 } : {}),
+                  rotulo: `Nodo ${nom(id)}${suelto ? ", suelto: no tiene aristas" : ""}`,
+                };
+              }}
               texto={(u, v) => capATexto(red.capacidades[u][v])}
               arista={(u, v) => {
                 const k = `${u}-${v}`;
@@ -101,6 +114,29 @@ export default function PasoRevision({ estado, despachar, onAnterior }: PropsPas
                   a T con capacidad ∞ y el algoritmo usa T como único sumidero.
                 </Mensaje>
               )}
+            </section>
+          )}
+
+          {sueltos.length > 0 && (
+            <section className="flex flex-col gap-2">
+              <h2 className="text-sm font-semibold">Nodos sueltos</h2>
+              {sueltos.map((u) => (
+                <button
+                  key={u}
+                  type="button"
+                  className="text-left"
+                  onMouseEnter={() => setNodoResaltado(u)}
+                  onMouseLeave={() => setNodoResaltado(null)}
+                  onFocus={() => setNodoResaltado(u)}
+                  onBlur={() => setNodoResaltado(null)}
+                >
+                  <Mensaje nivel="aviso">
+                    Aviso: el nodo {nom(u)} no tiene ninguna arista
+                    {roles.fuentes.includes(u) ? " (es fuente, pero no envía flujo)" : roles.sumideros.includes(u) ? " (es sumidero, pero no recibe flujo)" : ""}, así
+                    que no participa en el flujo.
+                  </Mensaje>
+                </button>
+              ))}
             </section>
           )}
 

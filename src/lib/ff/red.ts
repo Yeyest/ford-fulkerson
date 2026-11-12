@@ -59,6 +59,18 @@ export function advertirAristasAtipicas(m: Matriz, fuentes: ReadonlySet<number>,
   return avisos;
 }
 
+/** Nodos sueltos: sin ninguna arista de entrada ni de salida (no participan en el flujo). */
+export function nodosSueltos(m: Matriz): number[] {
+  const n = m.length;
+  const sueltos: number[] = [];
+  for (let u = 0; u < n; u++) {
+    let conectado = false;
+    for (let v = 0; v < n && !conectado; v++) conectado = m[u][v] > 0 || m[v][u] > 0;
+    if (!conectado) sueltos.push(u);
+  }
+  return sueltos;
+}
+
 export interface RedDeTrabajo {
   nTrabajo: number;
   capacidades: Matriz;

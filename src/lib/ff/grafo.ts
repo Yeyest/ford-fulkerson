@@ -186,11 +186,20 @@ export function generarGrafoAleatorio(
     }
 
     // Con límite: un nodo que se quedó sin salidas se conecta con alguno de las capas siguientes
-    // que aún admita una entrada (sin límite esto nunca pasa: cada nodo tiene al menos una salida)
+    // que aún admita una entrada. Si están llenas (por ejemplo, un único sumidero con 5 entradas),
+    // se conecta con otro nodo que ya tenga salida, sin cerrar un ciclo, para que el flujo pueda
+    // seguir por él. Sin límite esto nunca pasa: cada nodo tiene al menos una salida.
     for (const u of actual) {
       if (salida[u] > 0) continue;
       const libres = capas.slice(i + 1).flat().filter((w) => entrada[w] < limite);
-      if (libres.length) poner(u, rnd.choice(libres), rnd.randint(5, 25));
+      if (libres.length) {
+        poner(u, rnd.choice(libres), rnd.randint(5, 25));
+        continue;
+      }
+      const puente = capas
+        .flat()
+        .filter((w) => w !== u && entrada[w] < limite && salida[w] > 0 && buscarCaminoDirigido(m, w, u) === null);
+      if (puente.length) poner(u, rnd.choice(puente), rnd.randint(5, 25));
     }
   }
   return m;

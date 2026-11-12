@@ -14,6 +14,10 @@ test("nombres personalizados de los nodos", () => {
   assert.match(validarNombre("ABCD", 1, 8)!, /3 caracteres/);
   assert.match(validarNombre("A,B", 1, 8)!, /comas/);
   assert.match(validarNombre("12", 1, 8)!, /número/);
+  assert.match(validarNombre("+5", 1, 8)!, /número/);
+  // Solo letras, números y @ $ & * ( ) - _ ? ¿ + [ ] { } : ;
+  for (const bueno of ["ñu", "x_1", "@$&", "(*)", "-?¿", "+[]", "{};", "a:b"]) assert.equal(validarNombre(bueno, 1, 8), null, bueno);
+  for (const malo of ["#e", "→", "a b", "x.y", "!", "<>", "%"]) assert.match(validarNombre(malo, 1, 8)!, /Usa solo letras/, malo);
   // El editor manual crea aristas con los nombres nuevos (y siguen valiendo letras y números)
   const m = Array.from({ length: 8 }, () => new Array<number>(8).fill(0));
   assert.deepEqual(validarArista(m, "Lim,X,10"), { tipo: "aceptar", origen: 0, destino: 2, anterior: 0, capacidad: 10 });

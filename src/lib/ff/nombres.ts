@@ -17,13 +17,20 @@ export function fijarNombres(nombres: readonly string[]) {
   personalizados = nombres;
 }
 
+/** Símbolos permitidos en un nombre, además de letras y números. */
+export const SIMBOLOS_NOMBRE = "@$&*()-_?¿+[]{}:;";
+// Letras (con tildes) y números de cualquier alfabeto, más los símbolos permitidos. Sin espacios,
+// comas, «#» (marca un comentario en el texto del grafo), flechas ni otros signos.
+const CARACTERES_NOMBRE = /^[\p{L}\p{N}@$&*()\-_?¿+[\]{}:;]+$/u;
+
 /** Reglas de forma de un nombre (sin mirar a los demás nodos). Devuelve el error o null. */
 export function errorFormatoNombre(t: string): string | null {
   if (!t) return "El nombre no puede estar vacío.";
   if (t.length > 3) return "Usa como máximo 3 caracteres.";
   // Al escribir aristas "origen,destino,capacidad" una coma partiría el nombre y un número se confundiría con un índice
   if (t.includes(",")) return "El nombre no puede tener comas.";
-  if (/^\d+$/.test(t)) return "El nombre no puede ser solo un número.";
+  if (!CARACTERES_NOMBRE.test(t)) return `Usa solo letras, números o estos símbolos: ${SIMBOLOS_NOMBRE.split("").join(" ")}`;
+  if (/^[+-]?\d+$/.test(t)) return "El nombre no puede ser solo un número.";
   if (t === "S" || t === "T") return "S y T están reservados para el origen y el destino ficticios.";
   return null;
 }

@@ -9,7 +9,7 @@ import Encabezado from "../Encabezado";
 import { INSIGNIAS } from "../grafo/estilos";
 import { IconoCorte, TAM_ICONO } from "../iconos";
 import { useTamano } from "../grafo/hooks";
-import { Boton, Insignia, Kbd, Mensaje } from "../ui";
+import { Boton, DialogoConfirmar, Insignia, Kbd, Mensaje } from "../ui";
 import { GrafoEvaluador, PanelEvaluador, useEvaluador } from "./Evaluador";
 import GraficaFlujo from "./GraficaFlujo";
 import GrafoPaso, { type Vista } from "./GrafoPaso";
@@ -83,6 +83,8 @@ const VELOCIDADES = [0.5, 1, 2, 4];
 
 function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pasos: Paso[]; onEditar: () => void; onReiniciar: () => void }) {
   const [indice, setIndice] = useState(0);
+  /** Ventana «¿Empezar de nuevo?» abierta. */
+  const [preguntarReinicio, setPreguntarReinicio] = useState(false);
   const [vista, setVista] = useState<Vista>("flujo");
   const [evaluando, setEvaluando] = useState(false);
   const [reproduciendo, setReproduciendo] = useState(false);
@@ -130,7 +132,7 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
     const tecla = (e: KeyboardEvent) => {
       const el = document.activeElement;
       if (el && ["INPUT", "SELECT", "TEXTAREA"].includes(el.tagName)) return;
-      if (evaluando || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (evaluando || preguntarReinicio || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key === "ArrowRight" || e.key === "n") {
         e.preventDefault();
         setIndice((i) => Math.min(i + 1, ultimo));
@@ -161,11 +163,31 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
           <span className="hidden sm:inline">Volver a editar el grafo</span>
           <span className="sm:hidden">Editar</span>
         </Boton>
-        <Boton tam="sm" variante="fantasma" onClick={onReiniciar}>
+        <Boton
+          tam="sm"
+          variante="fantasma"
+          onClick={() => {
+            setReproduciendo(false);
+            setPreguntarReinicio(true);
+          }}
+        >
           <span className="hidden sm:inline">Empezar de nuevo</span>
           <span className="sm:hidden">Nuevo</span>
         </Boton>
       </Encabezado>
+      <DialogoConfirmar
+        abierto={preguntarReinicio}
+        titulo="¿Empezar de nuevo?"
+        confirmar="Sí, empezar de nuevo"
+        onConfirmar={() => {
+          setPreguntarReinicio(false);
+          onReiniciar();
+        }}
+        onCancelar={() => setPreguntarReinicio(false)}
+      >
+        Se borrarán el grafo, los nombres de los nodos y las fuentes y sumideros, y volverás al primer paso. Si quieres
+        conservar el grafo, cópialo antes como texto desde «Volver a editar el grafo».
+      </DialogoConfirmar>
 
       {/* Arriba: flujo total, iteración e insignia del paso */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-borde px-4 py-3 sm:px-6">
