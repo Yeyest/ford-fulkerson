@@ -2,7 +2,7 @@
 import type { GrafoImportado } from "@/lib/ff/archivo";
 import { type EstadoEditor, editorDesdeMatriz, editorVacio } from "@/lib/ff/editor";
 import { validarCantidadNodos } from "@/lib/ff/entrada";
-import { generarGrafoAleatorio } from "@/lib/ff/grafo";
+import { CONEXIONES_MAX, generarGrafoAleatorio } from "@/lib/ff/grafo";
 import type { Matriz } from "@/lib/ff/nombres";
 import { PyRandom } from "@/lib/ff/pyrandom";
 import type { Roles } from "@/lib/ff/red";
@@ -158,7 +158,7 @@ export function reductor(e: Estado, a: Accion): Estado {
       return { ...e, aleatorio: { ...e.aleatorio, editor: a.editor } };
     case "generar": {
       const semilla = a.semilla ?? Math.floor(Math.random() * 0x7fffffff);
-      const m = generarGrafoAleatorio(e.n, e.roles.fuentes, e.roles.sumideros, new PyRandom(semilla));
+      const m = generarGrafoAleatorio(e.n, e.roles.fuentes, e.roles.sumideros, new PyRandom(semilla), CONEXIONES_MAX);
       return { ...e, aleatorio: { editor: editorDesdeMatriz(m), semilla, clave: claveAleatorio(e), editando: false, importaciones: 0 } };
     }
     case "editarAleatorio":

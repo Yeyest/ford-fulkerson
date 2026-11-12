@@ -15,7 +15,7 @@ import {
   vaciar,
 } from "@/lib/ff/editor";
 import type { Punto } from "@/lib/ff/geometria";
-import { destinosProhibidos } from "@/lib/ff/grafo";
+import { CONEXIONES_MAX, type MotivoProhibido, motivosProhibidos } from "@/lib/ff/grafo";
 import { listarAristas, nombreNodo } from "@/lib/ff/nombres";
 import { Move, RotateCcw, Spline } from "lucide-react";
 import Burbuja from "../grafo/Burbuja";
@@ -136,14 +136,15 @@ export default function EditorManual({ editor, onEditor, disponer, estiloNodo, o
     [editor, onEditor, onFin],
   );
 
-  const prohibidosDe = useCallback((origen: number) => destinosProhibidos(m, origen), [m]);
+  // Destinos que no admiten una arista nueva desde `origen`: ciclo o límite de conexiones
+  const prohibidosDe = useCallback((origen: number) => motivosProhibidos(m, origen), [m]);
 
   /** Origen y destino elegidos en el dibujo: se pide la capacidad o se rechaza al instante. */
   const elegirPar = useCallback(
     (origen: number, destino: number) => {
       setSeleccion(null);
       if (origen === destino || prohibidosDe(origen).has(destino)) {
-        // Auto-bucle o ciclo: la misma validación de Python lo rechaza
+        // Auto-bucle, ciclo o límite de conexiones: la validación lo rechaza con su mensaje
         aplicar(crearArista(editor, nom(origen), nom(destino), "1"));
         return;
       }
@@ -262,7 +263,10 @@ export default function EditorManual({ editor, onEditor, disponer, estiloNodo, o
   }, [aplicar, editor, aristaSel, cancelar]);
 
   const origenActivo = arrastre?.origen ?? seleccion;
-  const prohibidos = useMemo(() => (origenActivo === null ? new Set<number>() : prohibidosDe(origenActivo)), [origenActivo, prohibidosDe]);
+  const prohibidos = useMemo(
+    () => (origenActivo === null ? new Map<number, MotivoProhibido>() : prohibidosDe(origenActivo)),
+    [origenActivo, prohibidosDe],
+  );
 
   const responder = (si: boolean) => {
     if (!confirmacion) return;
@@ -437,7 +441,7 @@ interface PropsDibujo {
   moviendo: number | null;
   estiloNodo: (id: number) => EstiloNodo;
   convertidorRef: { current: ((x: number, y: number) => Punto) | null };
-  prohibidos: Set<number>;
+  prohibidos: ReadonlyMap<number, MotivoProhibido>;
   origenActivo: number | null;
   arrastre: Arrastre | null;
   entrada: EntradaCapacidad | null;
@@ -481,7 +485,16 @@ function Dibujo(p: PropsDibujo) {
   const nodos: NodoVista[] = [...pts].map(([id, punto]) => {
     const estilo = p.estiloNodo(id);
     const esOrigen = id === origenActivo;
-    const prohibido = origenActivo !== null && !esOrigen && prohibidos.has(id);
+    const motivo = origenActivo !== null && !esOrigen ? prohibidos.get(id) : undefined;
+    const prohibido = motivo !== undefined;
+    const porQue =
+      motivo === "ciclo"
+        ? ", cerraría un ciclo"
+        : motivo === "salida"
+          ? `, el origen ya tiene ${CONEXIONES_MAX} conexiones salientes`
+          : motivo === "entrada"
+            ? `, ya tiene ${CONEXIONES_MAX} conexiones entrantes`
+            : "";
     return {
       id,
       nombre: nom(id),
@@ -493,7 +506,7 @@ function Dibujo(p: PropsDibujo) {
       atenuado: prohibido,
       prohibido,
       tiembla: temblor?.nodo === id ? temblor.vez : false,
-      rotulo: `Nodo ${nom(id)}${esOrigen ? ", origen elegido" : ""}${prohibido ? ", cerraría un ciclo" : ""}. Flechas para moverlo.`,
+      rotulo: `Nodo ${nom(id)}${esOrigen ? ", origen elegido" : ""}${porQue}. Flechas para moverlo.`,
       enfocable: true,
       presionado: esOrigen,
     };

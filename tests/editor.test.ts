@@ -12,7 +12,7 @@ import {
   responderConfirmacion,
   vaciar,
 } from "../src/lib/ff/editor.ts";
-import { destinosProhibidos, detectarCiclos } from "../src/lib/ff/grafo.ts";
+import { CONEXIONES_MAX, destinosProhibidos, detectarCiclos, generarGrafoAleatorio, gradoEntrada, gradoSalida } from "../src/lib/ff/grafo.ts";
 import { PyRandom } from "../src/lib/ff/pyrandom.ts";
 import { prepararRed } from "../src/lib/ff/red.ts";
 
@@ -167,5 +167,52 @@ describe("tope de capacidad", () => {
     assert.equal(r.tipo === "error" && r.texto, `Error: la capacidad debe ser como máximo ${CAPACIDAD_MAX}.`);
     // Ni con todas sus aristas al máximo un nodo alcanza el ∞ de los nodos virtuales
     assert.ok(15 * CAPACIDAD_MAX < INFINITO);
+  });
+});
+
+describe("límite de conexiones por nodo", () => {
+  test("validarArista rechaza la sexta salida o la sexta entrada, pero deja cambiar una arista existente", async () => {
+    const { validarArista } = await import("../src/lib/ff/entrada.ts");
+    const { CONEXIONES_MAX } = await import("../src/lib/ff/grafo.ts");
+    const { matrizCeros } = await import("../src/lib/ff/nombres.ts");
+    const m = matrizCeros(8);
+    for (let v = 1; v <= CONEXIONES_MAX; v++) m[0][v] = 3; // A → B…F
+    const r = validarArista(m, "A,G,4");
+    assert.equal(r.tipo === "error" && r.causa, "limite");
+    assert.match(r.tipo === "error" ? r.texto : "", /A ya tiene 5 conexiones salientes/);
+    assert.equal(validarArista(m, "A,B,7").tipo, "confirmar");
+
+    const e = matrizCeros(8);
+    for (let u = 0; u < CONEXIONES_MAX; u++) e[u][7] = 3; // A…E → H
+    const r2 = validarArista(e, "F,H,4");
+    assert.match(r2.tipo === "error" ? r2.texto : "", /H ya tiene 5 conexiones entrantes/);
+  });
+
+  test("el editor marca los destinos llenos y el texto importado respeta el límite", async () => {
+    const { motivosProhibidos } = await import("../src/lib/ff/grafo.ts");
+    const { textoAGrafo } = await import("../src/lib/ff/archivo.ts");
+    const { matrizCeros } = await import("../src/lib/ff/nombres.ts");
+    const m = matrizCeros(8);
+    for (let u = 0; u < 5; u++) m[u][7] = 3;
+    assert.equal(motivosProhibidos(m, 5).get(7), "entrada");
+    assert.equal(motivosProhibidos(m, 0).has(7), false); // A→H ya existe: se puede editar
+    const t = textoAGrafo("A,H,1\nB,H,1\nC,H,1\nD,H,1\nE,H,1\nF,H,1");
+    assert.equal(t.ok, false);
+    assert.match(t.ok ? "" : t.error, /Línea 6: H ya tiene 5 conexiones entrantes/);
+  });
+
+  test("con límite, el generador nunca supera 5 entradas ni 5 salidas y, si Python ya lo cumple, da el mismo grafo", () => {
+    const casos: [number, number[], number[]][] = [[10, [0], [9]], [16, [0], [15]], [16, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [15]], [16, [0], [1, 2, 3, 4, 5, 6, 7, 8]]];
+    for (const [n, F, S] of casos)
+      for (let s = 1; s <= 150; s++) {
+        const libre = generarGrafoAleatorio(n, F, S, new PyRandom(s));
+        const m = generarGrafoAleatorio(n, F, S, new PyRandom(s), CONEXIONES_MAX);
+        const cumple = (x: number[][]) => x.every((_, u) => gradoSalida(x, u) <= CONEXIONES_MAX && gradoEntrada(x, u) <= CONEXIONES_MAX);
+        assert.ok(cumple(m), `semilla ${s}, n=${n}`);
+        assert.equal(detectarCiclos(n, m), false);
+        if (cumple(libre)) assert.deepEqual(m, libre);
+        // Todos los nodos que no son fuente reciben al menos una arista
+        for (let v = 0; v < n; v++) if (!F.includes(v)) assert.ok(gradoEntrada(m, v) > 0, `nodo ${v} sin entrada (semilla ${s})`);
+      }
   });
 });

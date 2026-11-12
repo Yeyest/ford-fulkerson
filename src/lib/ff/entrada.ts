@@ -1,6 +1,6 @@
 // Validaciones de la entrada (iniciar_programa, _parsear_nodo, ingresar_grafo_manual).
 // Los textos son exactamente los que imprime el programa en Python.
-import { buscarCaminoDirigido } from "./grafo.ts";
+import { CONEXIONES_MAX, buscarCaminoDirigido, gradoEntrada, gradoSalida } from "./grafo.ts";
 import { type Matriz, listarAristas, nombreNodo } from "./nombres.ts";
 
 export const N_MIN = 7;
@@ -65,7 +65,7 @@ export function parsearNodo(texto: string, cantidadNodos: number): number {
   return nodo;
 }
 
-export type CausaError = "formato" | "nodo" | "capacidad" | "autobucle" | "ciclo";
+export type CausaError = "formato" | "nodo" | "capacidad" | "autobucle" | "limite" | "ciclo";
 
 export type ResultadoArista =
   | { tipo: "error"; causa: CausaError; texto: string; origen?: number; destino?: number; ciclo?: number[] }
@@ -160,6 +160,27 @@ export function validarArista(m: Matriz, entrada: string): ResultadoArista {
       destino,
       anterior,
       capacidad,
+    };
+  }
+
+  // Límite de conexiones (solo en la versión web): cada nodo admite como máximo
+  // CONEXIONES_MAX aristas salientes y CONEXIONES_MAX entrantes
+  if (gradoSalida(m, origen) >= CONEXIONES_MAX) {
+    return {
+      tipo: "error",
+      causa: "limite",
+      texto: `Error: ${nomO} ya tiene ${CONEXIONES_MAX} conexiones salientes (máximo ${CONEXIONES_MAX}). Se ha descartado ${nomO}->${nomD}.`,
+      origen,
+      destino,
+    };
+  }
+  if (gradoEntrada(m, destino) >= CONEXIONES_MAX) {
+    return {
+      tipo: "error",
+      causa: "limite",
+      texto: `Error: ${nomD} ya tiene ${CONEXIONES_MAX} conexiones entrantes (máximo ${CONEXIONES_MAX}). Se ha descartado ${nomO}->${nomD}.`,
+      origen,
+      destino,
     };
   }
 

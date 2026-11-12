@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { MENSAJE_SIN_ARISTAS, contarAristas, finalizar } from "@/lib/ff/editor";
+import { CONEXIONES_MAX } from "@/lib/ff/grafo";
 import { calcularPosicionesNodos } from "@/lib/ff/layout";
 import { type Matriz, nombreNodo } from "@/lib/ff/nombres";
 import type { Roles } from "@/lib/ff/red";
@@ -92,8 +93,8 @@ export default function PasoGrafo({ estado, despachar, onSiguiente, onAnterior }
             </h1>
             <p className="mt-2 max-w-3xl text-tenue">
               {manual || estado.aleatorio.editando
-                ? "Cada arista se valida al instante; si crea un ciclo se descarta y la red sigue válida."
-                : "DAG por capas: fuentes → capas intermedias → sumideros, con capacidades entre 5 y 25."}
+                ? `Cada arista se valida al instante; si crea un ciclo se descarta y la red sigue válida. Cada nodo admite como máximo ${CONEXIONES_MAX} conexiones entrantes y ${CONEXIONES_MAX} salientes.`
+                : `DAG por capas: fuentes → capas intermedias → sumideros, con capacidades entre 5 y 25 y como máximo ${CONEXIONES_MAX} conexiones entrantes y ${CONEXIONES_MAX} salientes por nodo.`}
             </p>
           </div>
           {!manual && (

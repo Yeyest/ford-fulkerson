@@ -8,7 +8,7 @@
 // La primera línea da el nombre de los nodos (en orden); cada línea siguiente es una
 // arista "origen,destino,capacidad", el mismo formato de la barra rápida del editor.
 import { CAPACIDAD_MAX, N_MAX, N_MIN } from "./entrada.ts";
-import { buscarCaminoDirigido } from "./grafo.ts";
+import { CONEXIONES_MAX, buscarCaminoDirigido, gradoEntrada, gradoSalida } from "./grafo.ts";
 import { type Matriz, errorFormatoNombre, letraNodo, listarAristas, matrizCeros } from "./nombres.ts";
 
 /** Grafo leído del texto, listo para cargar en la app. */
@@ -103,6 +103,10 @@ export function textoAGrafo(texto: string): ResultadoTexto {
       return fallo(`Línea ${linea}: la capacidad de ${nomU}->${nomV} debe ser un entero entre 1 y ${CAPACIDAD_MAX} (se leyó «${c}»).`);
     if (u === v) return fallo(`Línea ${linea}: ${nomU}->${nomV} es un auto-bucle (un nodo no puede conectarse consigo mismo).`);
     if (matriz[u][v] > 0) return fallo(`Línea ${linea}: la arista ${nomU}->${nomV} está repetida.`);
+    if (gradoSalida(matriz, u) >= CONEXIONES_MAX)
+      return fallo(`Línea ${linea}: ${nomU} ya tiene ${CONEXIONES_MAX} conexiones salientes (máximo ${CONEXIONES_MAX}), así que no se puede agregar ${nomU}->${nomV}.`);
+    if (gradoEntrada(matriz, v) >= CONEXIONES_MAX)
+      return fallo(`Línea ${linea}: ${nomV} ya tiene ${CONEXIONES_MAX} conexiones entrantes (máximo ${CONEXIONES_MAX}), así que no se puede agregar ${nomU}->${nomV}.`);
     const camino = buscarCaminoDirigido(matriz, v, u);
     if (camino)
       return fallo(`Línea ${linea}: la arista ${nomU}->${nomV} crearía un ciclo (${[u, ...camino].map((x) => nombresVisibles[x]).join(" → ")}).`);

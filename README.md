@@ -14,7 +14,8 @@ mensajes y los mismos pasos.
    - con la barra rápida (`A,B,10`, `0,1,10`, `FIN`, `DESHACER`, `LISTA`);
    - con el formulario.
 
-   Cada arista se valida al instante: no se aceptan auto-bucles ni ciclos.
+   Cada arista se valida al instante: no se aceptan auto-bucles ni ciclos, y cada nodo admite
+   como máximo 5 conexiones entrantes y 5 salientes (también en el modo aleatorio).
 4. **Fuentes y sumideros:** con varias fuentes se crea un origen ficticio **S**, y con varios
    sumideros un destino ficticio **T**.
 5. **Revisión:** muestra la red final con los avisos de aristas atípicas.
