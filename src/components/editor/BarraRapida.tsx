@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { nombreNodo } from "@/lib/ff/nombres";
+import { hayNombresPropios, letraNodo, nombreNodo } from "@/lib/ff/nombres";
 
 /** Entrada rápida con el formato de Python: A,B,10 o 0,1,10 (y FIN / DESHACER / LISTA). */
 export default function BarraRapida({ n, onLinea }: { n: number; onLinea: (linea: string) => boolean }) {
   const [texto, setTexto] = useState("");
-  const ultimo = nombreNodo(n - 1);
+  // Con nombres propios el ejemplo usa esos nombres; las letras A, B, … y los números siguen valiendo
+  const propios = hayNombresPropios(n);
+  const ejemplo = propios ? `${nombreNodo(0)},${nombreNodo(1)},10` : "A,B,10";
+  const rango = `${propios ? "nombres, " : ""}A-${letraNodo(n - 1)} / 0-${n - 1}`;
   return (
     <form
       className="flex items-center gap-2 rounded-lg border border-borde-fuerte bg-fondo px-3 focus-within:border-texto"
@@ -27,7 +30,7 @@ export default function BarraRapida({ n, onLinea }: { n: number; onLinea: (linea
         onChange={(e) => setTexto(e.target.value)}
         autoComplete="off"
         spellCheck={false}
-        placeholder={`origen,destino,capacidad   ej: A,B,10  o  0,1,10   (A-${ultimo} / 0-${n - 1})`}
+        placeholder={`origen,destino,capacidad   ej: ${ejemplo}  o  0,1,10   (${rango})`}
         className="h-11 min-w-0 flex-1 bg-transparent font-mono text-[15px] outline-none placeholder:text-tenue"
       />
       <span className="hidden font-mono text-xs text-tenue md:inline">FIN · DESHACER · LISTA</span>

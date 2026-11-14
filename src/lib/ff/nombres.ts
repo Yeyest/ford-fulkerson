@@ -51,6 +51,12 @@ export function nombreNodo(u: number, superFuente: number | null = null, superSu
   return personalizados[u] || letraNodo(u);
 }
 
+/** ¿Algún nodo (de los n primeros) tiene un nombre distinto de su letra? */
+export function hayNombresPropios(n: number): boolean {
+  for (let u = 0; u < n; u++) if (personalizados[u] && personalizados[u] !== letraNodo(u)) return true;
+  return false;
+}
+
 /** Nombre por defecto: 0 → A, 1 → B, …, 26 → AA. */
 export function letraNodo(u: number): string {
   let letra = "";

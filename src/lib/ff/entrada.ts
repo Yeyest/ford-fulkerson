@@ -1,7 +1,7 @@
 // Validaciones de la entrada (iniciar_programa, _parsear_nodo, ingresar_grafo_manual).
 // Los textos son exactamente los que imprime el programa en Python.
 import { CONEXIONES_MAX, buscarCaminoDirigido, gradoEntrada, gradoSalida } from "./grafo.ts";
-import { type Matriz, listarAristas, nombreNodo } from "./nombres.ts";
+import { type Matriz, hayNombresPropios, letraNodo, listarAristas, nombreNodo } from "./nombres.ts";
 
 export const N_MIN = 7;
 export const N_MAX = 16;
@@ -54,12 +54,20 @@ export function parsearNodo(texto: string, cantidadNodos: number): number {
   } else if (val.length === 1 && val >= "A" && val <= "Z") {
     nodo = val.charCodeAt(0) - 65;
   } else {
-    throw new Error(`'${texto.trim()}' no es un nodo válido (use una letra A-Z o un número).`);
+    // Con nombres propios el mensaje de Python (solo letras) quedaría incompleto
+    throw new Error(
+      hayNombresPropios(cantidadNodos)
+        ? `'${texto.trim()}' no es un nodo válido (use el nombre de un nodo, su letra ` +
+            `A-${letraNodo(cantidadNodos - 1)} o un número 0-${cantidadNodos - 1}).`
+        : `'${texto.trim()}' no es un nodo válido (use una letra A-Z o un número).`,
+    );
   }
   if (!(nodo >= 0 && nodo < cantidadNodos)) {
+    const nombres = Array.from({ length: cantidadNodos }, (_, v) => nombreNodo(v)).join(", ");
     throw new Error(
       `el nodo '${texto.trim()}' está fuera de rango; los nodos válidos van de ` +
-        `A a ${nombreNodo(cantidadNodos - 1)} (0 a ${cantidadNodos - 1}).`,
+        `A a ${letraNodo(cantidadNodos - 1)} (0 a ${cantidadNodos - 1})` +
+        (hayNombresPropios(cantidadNodos) ? `, o por su nombre: ${nombres}.` : "."),
     );
   }
   return nodo;

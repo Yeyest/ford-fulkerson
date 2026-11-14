@@ -15,6 +15,7 @@ import {
   vaciar,
 } from "@/lib/ff/editor";
 import type { Punto } from "@/lib/ff/geometria";
+import { interpretarSiNo } from "@/lib/ff/entrada";
 import { CONEXIONES_MAX, type MotivoProhibido, motivosProhibidos } from "@/lib/ff/grafo";
 import { listarAristas, nombreNodo } from "@/lib/ff/nombres";
 import { Move, RotateCcw, Spline } from "lucide-react";
@@ -283,6 +284,16 @@ export default function EditorManual({ editor, onEditor, disponer, estiloNodo, o
         <BarraRapida
           n={n}
           onLinea={(linea) => {
+            // Con la pregunta «¿Sobrescribir? (S/N)» abierta, S o N en la barra la responden
+            if (confirmacion) {
+              const si = interpretarSiNo(linea);
+              if (si !== null) {
+                responder(si);
+                return true;
+              }
+              // Cualquier otra cosa se toma como una línea nueva: la pregunta queda sin efecto
+              setConfirmacion(null);
+            }
             const r = procesarLinea(editor, linea);
             aplicar(r);
             return !(r.mensajes[0]?.nivel === "error");

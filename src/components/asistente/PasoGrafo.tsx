@@ -12,7 +12,7 @@ import DibujoRed, { type Disposicion } from "../grafo/DibujoRed";
 import { bandas, crearEscala, orientacionPara, posicionesCuadricula } from "../grafo/escala";
 import { estiloNodoBase } from "../grafo/estilos";
 import { DURACION, useOcultarDespues, useVisibleDurante } from "../temporal";
-import { Boton, Mensaje } from "../ui";
+import { Boton, DialogoConfirmar, Mensaje } from "../ui";
 import { ICONO_ETAPA } from "../iconos";
 import type { PropsPaso } from "./Asistente";
 import EditarNombres from "./EditarNombres";
@@ -66,6 +66,11 @@ export default function PasoGrafo({ estado, despachar, onSiguiente, onAnterior }
   const editor = manual ? estado.manual : estado.aleatorio.editor;
   const sinAristas = contarAristas(editor.matriz) === 0;
   const [error, setError] = useState<{ texto: string } | null>(null);
+  /** Ventana «¿Generar otro grafo?» abierta. */
+  const [preguntarRegenerar, setPreguntarRegenerar] = useState(false);
+  // Hay algo que se perdería al regenerar: cambios hechos a mano o un grafo cargado desde texto
+  const cambiosPropios = estado.aleatorio.editando && (estado.aleatorio.editor.historial.length > 0 || estado.aleatorio.semilla === null);
+  const regenerar = () => (cambiosPropios ? setPreguntarRegenerar(true) : despachar({ tipo: "generar" }));
   useOcultarDespues(error, DURACION.error, () => setError(null));
   const ctx = { fuentes: new Set(estado.roles.fuentes), sumideros: new Set(estado.roles.sumideros), superFuente: null, superSumidero: null };
   // Cambia con cada grafo nuevo (generado o cargado desde texto), para recalcular la disposición
@@ -102,7 +107,7 @@ export default function PasoGrafo({ estado, despachar, onSiguiente, onAnterior }
               <span className="font-mono text-xs text-tenue">
                 {estado.aleatorio.semilla === null ? "cargado desde texto" : `semilla ${estado.aleatorio.semilla}`}
               </span>
-              <Boton onClick={() => despachar({ tipo: "generar" })}>↻ Regenerar</Boton>
+              <Boton onClick={regenerar}>↻ Regenerar</Boton>
               {!estado.aleatorio.editando && (
                 <Boton variante="primario" onClick={() => despachar({ tipo: "editarAleatorio", editando: true })}>
                   Editar este grafo
@@ -158,6 +163,22 @@ export default function PasoGrafo({ estado, despachar, onSiguiente, onAnterior }
           </div>
         )}
       </div>
+      <DialogoConfirmar
+        abierto={preguntarRegenerar}
+        titulo="¿Generar otro grafo?"
+        confirmar="Sí, generar otro"
+        onConfirmar={() => {
+          setPreguntarRegenerar(false);
+          setError(null);
+          despachar({ tipo: "generar" });
+        }}
+        onCancelar={() => setPreguntarRegenerar(false)}
+      >
+        {estado.aleatorio.semilla === null
+          ? "Se reemplazará el grafo que cargaste desde texto"
+          : `Se perderán los cambios que hiciste al grafo (${estado.aleatorio.editor.historial.length} acción(es))`}
+        {" "}y no se podrá deshacer. Si quieres conservarlo, cópialo antes desde «Compartir o cargar el grafo como texto».
+      </DialogoConfirmar>
       <Pie
         onAnterior={onAnterior}
         onContinuar={continuar}
