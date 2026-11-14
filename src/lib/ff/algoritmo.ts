@@ -15,7 +15,9 @@ export const ETIQUETA_FUENTE: Etiqueta = { padre: "-", signo: "", delta: INFINIT
 /** dict de Python: conserva el orden de inserción. */
 export type Etiquetas = Map<number, Etiqueta>;
 
-export type TipoPaso = "inicio" | "camino_encontrado" | "flujo_actualizado" | "sin_mas_caminos" | "corte_minimo";
+export type TipoPaso = "inicio" | "camino_encontrado" | "flujo_actualizado" | "sin_mas_caminos" | "corte_minimo"
+  // Solo en la pantalla: cada nodo que se etiqueta antes de un paso "camino_encontrado" o "sin_mas_caminos".
+  | "etiquetando";
 
 export interface Paso {
   tipo: TipoPaso;
@@ -30,6 +32,8 @@ export interface Paso {
   aristas_corte: [number, number][];
   descripcion: string;
   conjunto_alcanzable?: Set<number>;
+  /** Solo en los pasos "etiquetando": la etiqueta que se acaba de poner y su posición en el orden. */
+  nueva_etiqueta?: { nodo: number; padre: number | null; signo: "+" | "-"; delta: number; orden: number; total: number };
 }
 
 export function buscarCaminoConEtiquetas(

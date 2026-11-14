@@ -56,7 +56,11 @@ export default function PanelPaso({ paso, anterior, datos }: { paso: Paso; anter
               const e = paso.etiquetas.get(u);
               const enCamino = paso.nodos_camino.has(u) && (paso.tipo === "camino_encontrado" || paso.tipo === "flujo_actualizado");
               return (
-                <tr key={u} className={`border-b border-borde last:border-0 ${e ? "" : "text-tenue"}`}>
+                <tr
+                  key={u}
+                  className={`border-b border-borde last:border-0 ${e ? "" : "text-tenue"}`}
+                  style={paso.nueva_etiqueta?.nodo === u ? { background: "color-mix(in srgb, var(--n-etiquetado) 45%, transparent)" } : undefined}
+                >
                   <td className="py-1 font-mono text-xs text-tenue">{e ? i + 1 : ""}</td>
                   <td className="py-1 font-mono font-semibold">
                     {nom(u)}

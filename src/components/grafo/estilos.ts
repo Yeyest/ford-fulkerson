@@ -9,6 +9,7 @@ export const INSIGNIAS: Record<TipoPaso, { texto: string; color: string }> = {
   camino_encontrado: { texto: "ETIQUETADO: CAMINO AUMENTANTE ENCONTRADO", color: "var(--i-camino)" },
   flujo_actualizado: { texto: "ACTUALIZACIÓN DEL FLUJO", color: "var(--i-actualizado)" },
   sin_mas_caminos: { texto: "ETIQUETADO SIN LLEGAR AL SUMIDERO", color: "var(--i-sin-caminos)" },
+  etiquetando: { texto: "ETIQUETANDO NODOS", color: "var(--n-etiquetado-borde)" },
   corte_minimo: { texto: "RESULTADO: FLUJO MÁXIMO Y CORTE MÍNIMO", color: "var(--i-corte)" },
 };
 
@@ -48,7 +49,7 @@ export function estiloNodoPaso(u: number, paso: Paso, c: ContextoRoles): EstiloN
   const especial = u === c.superFuente || u === c.superSumidero || c.fuentes.has(u) || c.sumideros.has(u);
   if (!especial) {
     if (enCamino) relleno = "var(--n-camino)";
-    else if ((tipo === "camino_encontrado" || tipo === "sin_mas_caminos") && etiquetas.has(u)) relleno = "var(--n-etiquetado)";
+    else if ((tipo === "camino_encontrado" || tipo === "sin_mas_caminos" || tipo === "etiquetando") && etiquetas.has(u)) relleno = "var(--n-etiquetado)";
   }
 
   let borde = base.borde;
@@ -57,6 +58,7 @@ export function estiloNodoPaso(u: number, paso: Paso, c: ContextoRoles): EstiloN
     if (nodos_camino.has(u)) [borde, grosor] = ["var(--n-actualizado-borde)", 3.5];
   } else if (tipo !== "corte_minimo") {
     if (tipo === "camino_encontrado" && nodos_camino.has(u)) [borde, grosor] = ["var(--n-camino-borde)", 3.5];
+    else if (paso.nueva_etiqueta?.nodo === u) [borde, grosor] = ["var(--n-etiquetado-borde)", 4.5];
     else if (etiquetas.has(u)) [borde, grosor] = ["var(--n-etiquetado-borde)", 2.8];
   }
   return { relleno, borde, grosor, colorTexto: base.colorTexto, punteado: base.punteado };

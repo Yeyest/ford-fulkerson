@@ -56,6 +56,78 @@ export function tamanoDibujo(d: DatosRed, w: number, h: number): [number, number
   return [w * k, h * k];
 }
 
+/** Pasos que se muestran en pantalla y, para cada uno, el índice del paso del algoritmo al que pertenece. */
+export interface Recorrido {
+  pasos: Paso[];
+  origen: number[];
+}
+
+/**
+ * Antes de cada paso de etiquetado ("camino_encontrado" o "sin_mas_caminos") agrega un paso
+ * "etiquetando" por cada nodo que recibe su etiqueta, en el orden de la búsqueda en anchura.
+ * Así el etiquetado se ve nodo por nodo y no todo de una vez. Los pasos del algoritmo no cambian.
+ */
+export function expandirEtiquetado(pasos: Paso[], d: DatosRed): Recorrido {
+  const cap = d.red.capacidades;
+  const { nom } = d;
+  const res: Recorrido = { pasos: [], origen: [] };
+  pasos.forEach((p, i) => {
+    if (p.tipo === "camino_encontrado" || p.tipo === "sin_mas_caminos") {
+      const it = iteracionDe(pasos, i);
+      const lista = [...p.etiquetas];
+      const total = lista.length;
+      const deltaTexto = (x: number) => (x >= 99999 ? "∞" : String(x));
+      for (let k = 1; k < total; k++) {
+        const [nodo, e] = lista[k - 1];
+        let descripcion: string;
+        let nueva: Paso["nueva_etiqueta"] = { nodo, padre: null, signo: "+", delta: e.delta, orden: k, total };
+        if (e.padre === "-") {
+          descripcion =
+            `Iteración ${it}: empieza la búsqueda de un camino aumentante. Se borran las etiquetas anteriores ` +
+            `y la fuente ${nom(nodo)} se etiqueta [-, ∞].\nDesde ella se etiquetan, en anchura, los nodos a los que se puede llegar.`;
+        } else {
+          const padre = e.padre;
+          const signo = e.signo === "-" ? "-" : "+";
+          const ePadre = p.etiquetas.get(padre)!;
+          const P = nom(padre);
+          const V = nom(nodo);
+          if (signo === "+") {
+            const c = cap[padre][nodo];
+            const f = p.flujo[padre][nodo];
+            descripcion =
+              `Se examina ${P}: la arista ${P}→${V} todavía admite ${c - f} unidades (c − f = ${c} − ${f}), ` +
+              `así que ${V} se etiqueta [${P}+, ${deltaTexto(e.delta)}].\nΔ = mín(${deltaTexto(ePadre.delta)}, ${c - f}) = ${deltaTexto(e.delta)}.`;
+          } else {
+            const f = p.flujo[nodo][padre];
+            descripcion =
+              `Se examina ${P}: la arista ${V}→${P} ya lleva ${f} unidades que se pueden devolver, ` +
+              `así que ${V} se etiqueta [${P}−, ${deltaTexto(e.delta)}] (se llega a ${V} recorriendo esa arista al revés).` +
+              `\nΔ = mín(${deltaTexto(ePadre.delta)}, ${f}) = ${deltaTexto(e.delta)}.`;
+          }
+          nueva = { nodo, padre, signo, delta: e.delta, orden: k, total };
+        }
+        res.pasos.push({
+          ...p,
+          tipo: "etiquetando",
+          etiquetas: new Map(lista.slice(0, k)),
+          camino: [],
+          aristas_camino: [],
+          nodos_camino: new Set(),
+          cuello_botella: 0,
+          aristas_corte: [],
+          conjunto_alcanzable: undefined,
+          descripcion,
+          nueva_etiqueta: nueva,
+        });
+        res.origen.push(i);
+      }
+    }
+    res.pasos.push(p);
+    res.origen.push(i);
+  });
+  return res;
+}
+
 /** Número de iteración de cada paso (0 = inicio). */
 export function iteracionDe(pasos: Paso[], i: number): number {
   let k = 0;

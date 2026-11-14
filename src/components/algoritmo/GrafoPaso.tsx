@@ -147,11 +147,28 @@ export default function GrafoPaso({
   const textos = new Map(arcos.map((a) => [a.clave, a.texto]));
   const etiquetas = useEtiquetas(geoArcos, textos, pts, ancho, alto, med.radio, med.fuenteEtiqueta, med.fuenteTag);
 
+  // Mientras se etiqueta nodo por nodo: aristas por las que se llegó a cada nodo ya etiquetado
+  // (arista original → signo de la etiqueta) y la de la etiqueta que se acaba de poner.
+  const arbol = new Map<string, "+" | "-">();
+  if (paso.tipo === "etiquetando")
+    for (const [n, e] of paso.etiquetas) if (e.padre !== "-") arbol.set(e.signo === "-" ? `${n}-${e.padre}` : `${e.padre}-${n}`, e.signo === "-" ? "-" : "+");
+  const nueva = paso.nueva_etiqueta;
+  const aristaNueva = nueva && nueva.padre !== null ? (nueva.signo === "-" ? `${nueva.nodo}-${nueva.padre}` : `${nueva.padre}-${nueva.nodo}`) : null;
+  const estiloEtiquetado = (k: string, sentido: "+" | "-"): EstiloArista | null => {
+    const s = arbol.get(k);
+    if (s === undefined || (vista === "residual" && s !== sentido)) return null;
+    const color = s === "+" ? "var(--n-etiquetado-borde)" : "var(--a-inverso)";
+    if (k === aristaNueva) return { color, ancho: 4.5, punteada: s === "-" && vista === "flujo", animacion: s === "+" || vista === "residual" ? "adelante" : "atras" };
+    return { color, ancho: 2.8, punteada: s === "-" && vista === "flujo" };
+  };
+
   const aristas: AristaVista[] = arcos.map((a) => {
     const [u, v] = a.original.split("-").map(Number);
     if (a.retroceso) return aristaRetroceso(a, a.retroceso);
     let estilo: EstiloArista;
-    if (vista === "flujo") {
+    const etiquetado = paso.tipo === "etiquetando" ? estiloEtiquetado(a.original, a.sentido) : null;
+    if (etiquetado) estilo = etiquetado;
+    else if (vista === "flujo") {
       estilo = estiloAristaPaso(u, v, paso, cap[u][v], caminoMapa, corte);
       // Arista recorrida al revés: el camino va por su flecha de retroceso; ella queda en rosa fino
       if (caminoMapa.get(a.original) === "-" && (paso.tipo === "camino_encontrado" || actualizado))
