@@ -71,6 +71,7 @@ export function retrocesos(paso: Paso): Retroceso[] {
   const lista: Retroceso[] = [];
   for (const [nodo, e] of paso.etiquetas) {
     if (e.signo !== "-" || e.padre === "-") continue;
+    if (paso.etiquetas_nuevas && !paso.etiquetas_nuevas.has(nodo)) continue; // etiqueta de una iteración anterior
     const r = { nodo, desde: e.padre, flujo: paso.flujo[nodo][e.padre], delta: e.delta, enCamino: enCamino.has(`${e.padre}-${nodo}`) };
     if (tipo !== "flujo_actualizado" || r.enCamino) lista.push(r);
   }

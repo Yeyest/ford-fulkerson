@@ -10,7 +10,9 @@ import { type TramoInverso, retrocesos, tramosInversos, usaFlujoInverso } from "
 /** Descripción del paso y tabla de etiquetas [padre±, Δ]. */
 export default function PanelPaso({ paso, anterior, datos }: { paso: Paso; anterior?: Paso; datos: DatosRed }) {
   const { nom, red } = datos;
-  const etiquetados = [...paso.etiquetas.keys()];
+  // Primero las etiquetas de esta iteración (en el orden en que se pusieron), luego las anteriores
+  const nuevas = paso.etiquetas_nuevas ? [...paso.etiquetas_nuevas] : [...paso.etiquetas.keys()];
+  const anteriores = [...paso.etiquetas.keys()].filter((u) => !nuevas.includes(u));
   const sinEtiqueta = Array.from({ length: red.nTrabajo }, (_, i) => i).filter((u) => !paso.etiquetas.has(u));
   // La aclaración «← = arista recorrida al revés» solo tiene sentido si el camino usa flujo inverso
   const descripcion = usaFlujoInverso(paso) ? paso.descripcion : paso.descripcion.replace(/ *\(← = arista recorrida al revés\)/, "");
@@ -51,13 +53,18 @@ export default function PanelPaso({ paso, anterior, datos }: { paso: Paso; anter
             </tr>
           </thead>
           <tbody>
-            {[...etiquetados, ...sinEtiqueta].map((u, i) => {
-              const tag = estiloTag(u, paso.etiquetas, nom);
+            {[...nuevas, ...anteriores, ...sinEtiqueta].map((u, i) => {
+              const anterior = anteriores.includes(u);
+              const tag = estiloTag(u, paso.etiquetas, nom, anterior);
               const e = paso.etiquetas.get(u);
               const enCamino = paso.nodos_camino.has(u) && (paso.tipo === "camino_encontrado" || paso.tipo === "flujo_actualizado");
               return (
-                <tr key={u} className={`border-b border-borde last:border-0 ${e ? "" : "text-tenue"}`}>
-                  <td className="py-1 font-mono text-xs text-tenue">{e ? i + 1 : ""}</td>
+                <tr
+                  key={u}
+                  className={`border-b border-borde last:border-0 ${e && !anterior ? "" : "text-tenue"}`}
+                  style={paso.nueva_etiqueta?.nodo === u ? { background: "color-mix(in srgb, var(--n-etiquetado) 45%, transparent)" } : undefined}
+                >
+                  <td className="py-1 font-mono text-xs text-tenue">{e && !anterior ? i + 1 : ""}</td>
                   <td className="py-1 font-mono font-semibold">
                     {nom(u)}
                     {enCamino && (
@@ -75,7 +82,10 @@ export default function PanelPaso({ paso, anterior, datos }: { paso: Paso; anter
             })}
           </tbody>
         </table>
-        <p className="mt-2 text-xs text-tenue">El orden (#) es el orden en que se etiquetaron los nodos (búsqueda en anchura).</p>
+        <p className="mt-2 text-xs text-tenue">
+          El orden (#) es el orden en que se etiquetaron los nodos en esta iteración.
+          {anteriores.length > 0 && " Las etiquetas en gris son de una iteración anterior: esos nodos no están en el camino de esta iteración, así que no se actualizaron."}
+        </p>
         <EtiquetasInversas paso={paso} datos={datos} />
       </section>
     </div>

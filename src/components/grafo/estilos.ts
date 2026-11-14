@@ -9,6 +9,7 @@ export const INSIGNIAS: Record<TipoPaso, { texto: string; color: string }> = {
   camino_encontrado: { texto: "ETIQUETADO: CAMINO AUMENTANTE ENCONTRADO", color: "var(--i-camino)" },
   flujo_actualizado: { texto: "ACTUALIZACIÓN DEL FLUJO", color: "var(--i-actualizado)" },
   sin_mas_caminos: { texto: "ETIQUETADO SIN LLEGAR AL SUMIDERO", color: "var(--i-sin-caminos)" },
+  etiquetando: { texto: "ETIQUETANDO NODOS", color: "var(--n-etiquetado-borde)" },
   corte_minimo: { texto: "RESULTADO: FLUJO MÁXIMO Y CORTE MÍNIMO", color: "var(--i-corte)" },
 };
 
@@ -43,12 +44,14 @@ export function estiloNodoBase(u: number, c: ContextoRoles): EstiloNodo {
 export function estiloNodoPaso(u: number, paso: Paso, c: ContextoRoles): EstiloNodo {
   const { tipo, etiquetas, nodos_camino } = paso;
   const enCamino = (tipo === "camino_encontrado" || tipo === "flujo_actualizado") && nodos_camino.has(u);
+  // Etiqueta puesta en esta iteración (las de iteraciones anteriores no resaltan el nodo)
+  const vigente = paso.etiquetas_nuevas ? paso.etiquetas_nuevas.has(u) : etiquetas.has(u);
   const base = estiloNodoBase(u, c);
   let relleno = base.relleno;
   const especial = u === c.superFuente || u === c.superSumidero || c.fuentes.has(u) || c.sumideros.has(u);
   if (!especial) {
     if (enCamino) relleno = "var(--n-camino)";
-    else if ((tipo === "camino_encontrado" || tipo === "sin_mas_caminos") && etiquetas.has(u)) relleno = "var(--n-etiquetado)";
+    else if ((tipo === "camino_encontrado" || tipo === "sin_mas_caminos" || tipo === "etiquetando") && vigente) relleno = "var(--n-etiquetado)";
   }
 
   let borde = base.borde;
@@ -57,15 +60,21 @@ export function estiloNodoPaso(u: number, paso: Paso, c: ContextoRoles): EstiloN
     if (nodos_camino.has(u)) [borde, grosor] = ["var(--n-actualizado-borde)", 3.5];
   } else if (tipo !== "corte_minimo") {
     if (tipo === "camino_encontrado" && nodos_camino.has(u)) [borde, grosor] = ["var(--n-camino-borde)", 3.5];
-    else if (etiquetas.has(u)) [borde, grosor] = ["var(--n-etiquetado-borde)", 2.8];
+    else if (paso.nueva_etiqueta?.nodo === u) [borde, grosor] = ["var(--n-etiquetado-borde)", 4.5];
+    else if (vigente) [borde, grosor] = ["var(--n-etiquetado-borde)", 2.8];
   }
   return { relleno, borde, grosor, colorTexto: base.colorTexto, punteado: base.punteado };
 }
 
 /** estilo_tag de Python: texto y fondo de la etiqueta [padre±, Δ]. */
-export function estiloTag(u: number, etiquetas: Etiquetas, nom: (u: number) => string) {
+export function estiloTag(u: number, etiquetas: Etiquetas, nom: (u: number) => string, anterior = false) {
   const e = etiquetas.get(u);
   if (!e) return { texto: "[ ]", fondo: "var(--t-vacia)", color: "#78716c" };
+  if (anterior) {
+    // Etiqueta de una iteración anterior: el nodo no está en el camino actual y no se actualizó
+    const d = e.delta >= 99999 ? "∞" : String(e.delta);
+    return { texto: e.padre === "-" ? "[-, ∞]" : `[${nom(e.padre)}${e.signo}, ${d}]`, fondo: "var(--t-vacia)", color: "#78716c" };
+  }
   if (e.padre === "-") return { texto: "[-, ∞]", fondo: "var(--t-fuente)", color: TEXTO_OSCURO };
   const delta = e.delta >= 99999 ? "∞" : String(e.delta);
   return {

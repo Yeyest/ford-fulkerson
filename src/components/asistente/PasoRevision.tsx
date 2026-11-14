@@ -103,15 +103,17 @@ export default function PasoRevision({ estado, despachar, onAnterior }: PropsPas
               {roles.fuentes.length > 1 && (
                 <Mensaje nivel="info">
                   {virtuales[0]}
-                  {"\n"}Hay {roles.fuentes.length} fuentes ({roles.fuentes.map((x) => nombreNodo(x)).join(", ")}): S se conecta a cada una
-                  con capacidad ∞ y el algoritmo usa S como única fuente.
+                  {"\n"}Hay {roles.fuentes.length} fuentes. S se conecta a cada una con la suma de sus capacidades de salida (
+                  {roles.fuentes.map((f) => `${nombreNodo(f)}: ${red.capacidades[red.superFuente!][f]}`).join(", ")}), que es lo máximo
+                  que esa fuente puede enviar, así que no limita el flujo. El algoritmo usa S como única fuente.
                 </Mensaje>
               )}
               {roles.sumideros.length > 1 && (
                 <Mensaje nivel="info">
                   {virtuales[virtuales.length - 1]}
-                  {"\n"}Hay {roles.sumideros.length} sumideros ({roles.sumideros.map((x) => nombreNodo(x)).join(", ")}): cada uno se conecta
-                  a T con capacidad ∞ y el algoritmo usa T como único sumidero.
+                  {"\n"}Hay {roles.sumideros.length} sumideros. Cada uno se conecta a T con la suma de sus capacidades de entrada (
+                  {roles.sumideros.map((s) => `${nombreNodo(s)}: ${red.capacidades[s][red.superSumidero!]}`).join(", ")}), que es lo
+                  máximo que ese sumidero puede recibir, así que no limita el flujo. El algoritmo usa T como único sumidero.
                 </Mensaje>
               )}
             </section>

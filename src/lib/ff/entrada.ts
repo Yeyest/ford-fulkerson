@@ -78,9 +78,9 @@ export type ResultadoArista =
  * ingresar_grafo_manual: formato → nodos → capacidad → auto-bucle → repetida / ciclo.
  */
 /**
- * Capacidad máxima de una arista. El «∞» de los nodos virtuales S y T es el número INFINITO
- * (999 999): con este tope, ni todas las aristas de un nodo juntas (15 × 9 999) llegan a él,
- * así que S y T nunca limitan el flujo, y ninguna capacidad real se confunde con ∞.
+ * Capacidad máxima de una arista. El «∞» de la etiqueta de la fuente es el número INFINITO
+ * (999 999): con este tope, ninguna capacidad real ni la suma de las de un nodo (15 × 9 999)
+ * llegan a él, así que nunca se confunden con ∞.
  */
 export const CAPACIDAD_MAX = 9999;
 

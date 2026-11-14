@@ -38,7 +38,8 @@ describe("algoritmo de Ford-Fulkerson (pasos idénticos a Python)", () => {
       const avisos = advertirAristasAtipicas(caso.matriz, new Set(caso.fuentes), new Set(caso.sumideros));
       assert.deepEqual(avisos.map((a) => a.texto), caso.avisos);
 
-      const red = prepararRed(caso.matriz, caso.fuentes, caso.sumideros);
+      // Python usa capacidad ∞ en las aristas de S y T
+      const red = prepararRed(caso.matriz, caso.fuentes, caso.sumideros, "infinito");
       assert.deepEqual(
         {
           n: red.nTrabajo,
@@ -130,7 +131,7 @@ describe("roles (mismos mensajes que pedir_nodos)", () => {
 describe("evaluador de cortes manuales (misma lógica y textos)", () => {
   for (const caso of datos.evaluador) {
     test(caso.nombre, () => {
-      const red = prepararRed(caso.matriz, caso.fuentes, caso.sumideros);
+      const red = prepararRed(caso.matriz, caso.fuentes, caso.sumideros, "infinito");
       const { fuente, sumidero } = extremosEfectivos(caso.fuentes, caso.sumideros, red.superFuente, red.superSumidero);
       assert.equal(fuente, caso.fuente);
       assert.equal(sumidero, caso.sumidero);
@@ -153,5 +154,36 @@ describe("evaluador de cortes manuales (misma lógica y textos)", () => {
     assert.ok(datos.evaluador.some((c: any) => c.es_corte_valido));
     assert.ok(datos.evaluador.some((c: any) => !c.es_corte_valido));
     assert.ok(datos.evaluador.some((c: any) => c.aristas_sin_efecto.length > 0));
+  });
+});
+
+describe("aristas de S y T con la suma de capacidades (en lugar de ∞)", () => {
+  test("S→f vale la suma de las salidas de f y s→T la suma de las entradas de s", () => {
+    const m = Array.from({ length: 7 }, () => new Array(7).fill(0));
+    m[0][2] = 50;
+    m[0][3] = 30;
+    m[1][3] = 8;
+    m[2][5] = 40;
+    m[3][5] = 12;
+    m[3][6] = 20;
+    const red = prepararRed(m, [0, 1], [5, 6]);
+    assert.equal(red.capacidades[red.superFuente!][0], 80);
+    assert.equal(red.capacidades[red.superFuente!][1], 8);
+    assert.equal(red.capacidades[5][red.superSumidero!], 52);
+    assert.equal(red.capacidades[6][red.superSumidero!], 20);
+  });
+
+  test("da el mismo flujo máximo que con ∞ en todos los casos de Python, y el corte lo certifica", () => {
+    let conVirtuales = 0;
+    for (const caso of datos.algoritmo) {
+      const conInf = prepararRed(caso.matriz, caso.fuentes, caso.sumideros, "infinito");
+      const conSuma = prepararRed(caso.matriz, caso.fuentes, caso.sumideros, "suma");
+      if (conSuma.superFuente !== null || conSuma.superSumidero !== null) conVirtuales += 1;
+      const a = generarPasosFordFulkerson(conInf.nTrabajo, conInf.capacidades, conInf.fuente, conInf.sumidero, conInf.superFuente, conInf.superSumidero);
+      // generarPasosFordFulkerson ya verifica que el corte mínimo tenga la capacidad del flujo máximo
+      const b = generarPasosFordFulkerson(conSuma.nTrabajo, conSuma.capacidades, conSuma.fuente, conSuma.sumidero, conSuma.superFuente, conSuma.superSumidero, "suma");
+      assert.equal(b.at(-1)!.flujo_total, a.at(-1)!.flujo_total, caso.nombre);
+    }
+    assert.ok(conVirtuales > 10);
   });
 });

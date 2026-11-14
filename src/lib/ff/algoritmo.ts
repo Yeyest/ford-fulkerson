@@ -1,6 +1,7 @@
 // Ford-Fulkerson con etiquetado [padre±, Δ] (buscar_camino_con_etiquetas,
 // generar_pasos_ford_fulkerson y las verificaciones). Réplica exacta de Python.
 import { INFINITO, type Matriz, copiarMatriz, matrizCeros, nombreNodo } from "./nombres.ts";
+import type { CapacidadVirtual } from "./red.ts";
 
 /** Etiqueta de un nodo: (padre, signo, Δ). La fuente lleva ('-', '', INFINITO). */
 export interface Etiqueta {
@@ -14,7 +15,9 @@ export const ETIQUETA_FUENTE: Etiqueta = { padre: "-", signo: "", delta: INFINIT
 /** dict de Python: conserva el orden de inserción. */
 export type Etiquetas = Map<number, Etiqueta>;
 
-export type TipoPaso = "inicio" | "camino_encontrado" | "flujo_actualizado" | "sin_mas_caminos" | "corte_minimo";
+export type TipoPaso = "inicio" | "camino_encontrado" | "flujo_actualizado" | "sin_mas_caminos" | "corte_minimo"
+  // Solo en la pantalla: cada nodo que se etiqueta antes de un paso "camino_encontrado" o "sin_mas_caminos".
+  | "etiquetando";
 
 export interface Paso {
   tipo: TipoPaso;
@@ -29,6 +32,13 @@ export interface Paso {
   aristas_corte: [number, number][];
   descripcion: string;
   conjunto_alcanzable?: Set<number>;
+  /** Solo en los pasos "etiquetando": la etiqueta que se acaba de poner y su posición en el orden. */
+  nueva_etiqueta?: { nodo: number; padre: number | null; signo: "+" | "-"; delta: number; orden: number; total: number };
+  /**
+   * Solo en la pantalla: nodos cuya etiqueta se puso en esta iteración. Las demás etiquetas de
+   * `etiquetas` vienen de una iteración anterior (ese nodo no está en el camino de esta iteración).
+   */
+  etiquetas_nuevas?: Set<number>;
 }
 
 export function buscarCaminoConEtiquetas(
@@ -137,6 +147,7 @@ export function generarPasosFordFulkerson(
   sumidero: number,
   superFuente: number | null = null,
   superSumidero: number | null = null,
+  capacidadVirtual: CapacidadVirtual = "infinito",
 ): Paso[] {
   const nom = (u: number) => nombreNodo(u, superFuente, superSumidero);
 
@@ -166,7 +177,17 @@ export function generarPasosFordFulkerson(
   };
 
   let descInicio = "Flujo 0 en todas las aristas (cumple 0 ≤ f ≤ c).\n";
-  if (superFuente !== null && superSumidero !== null) {
+  if (capacidadVirtual === "suma") {
+    if (superFuente !== null && superSumidero !== null) {
+      descInicio +=
+        "Los nodos S y T son virtuales: S se conecta a cada fuente con la suma de sus capacidades de salida, " +
+        "y cada sumidero se conecta a T con la suma de sus capacidades de entrada.\n";
+    } else if (superFuente !== null) {
+      descInicio += "El nodo S es una super-fuente virtual: se conecta a cada fuente con la suma de sus capacidades de salida.\n";
+    } else if (superSumidero !== null) {
+      descInicio += "El nodo T es un super-sumidero virtual: cada sumidero se conecta a T con la suma de sus capacidades de entrada.\n";
+    }
+  } else if (superFuente !== null && superSumidero !== null) {
     descInicio += "Los nodos S y T son virtuales y se conectan con capacidad ∞.\n";
   } else if (superFuente !== null) {
     descInicio += "El nodo S es una super-fuente virtual (capacidad ∞ hacia cada fuente).\n";
