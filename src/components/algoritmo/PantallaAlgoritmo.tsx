@@ -18,7 +18,7 @@ import LineaTiempo from "./LineaTiempo";
 import PanelPaso from "./PanelPaso";
 import Resultado from "./Resultado";
 import { usaFlujoInverso } from "./inverso";
-import { type DatosRed, crearDatosRed, expandirEtiquetado, iteracionDe, tamanoDibujo } from "./red";
+import { type DatosRed, crearDatosRed, iteracionDe } from "./red";
 
 interface Props {
   matriz: Matriz;
@@ -82,9 +82,6 @@ function useNumeroAnimado(valor: number) {
 const VELOCIDADES = [0.5, 1, 2, 4];
 
 function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pasos: Paso[]; onEditar: () => void; onReiniciar: () => void }) {
-  // Pasos en pantalla: los del algoritmo más uno por cada nodo que se etiqueta (ver expandirEtiquetado)
-  const recorrido = useMemo(() => expandirEtiquetado(pasos, datos), [pasos, datos]);
-  const vistos = recorrido.pasos;
   const [indice, setIndice] = useState(0);
   /** Ventana «¿Empezar de nuevo?» abierta. */
   const [preguntarReinicio, setPreguntarReinicio] = useState(false);
@@ -94,7 +91,6 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
   const [velocidad, setVelocidad] = useState(1);
   const [hojaAbierta, setHojaAbierta] = useState(false);
   const [ref, { w, h }] = useTamano<HTMLDivElement>();
-  const [anchoDibujo, altoDibujo] = tamanoDibujo(datos, w, h);
   const ev = useEvaluador(datos);
   // Animación de entrada de la red al empezar el algoritmo
   // (el tiempo empieza a contar cuando la red ya tiene tamaño y se ve)
@@ -106,18 +102,13 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
     return () => clearTimeout(t);
   }, [visible]);
 
-  const paso = vistos[indice];
-  const ultimo = vistos.length - 1;
-  /** Paso del algoritmo al que pertenece el paso en pantalla. */
-  const real = recorrido.origen[indice];
+  const paso = pasos[indice];
+  const ultimo = pasos.length - 1;
   const flujoMostrado = useNumeroAnimado(paso.flujo_total);
-  const it = iteracionDe(pasos, real);
+  const it = iteracionDe(pasos, indice);
   const insignia = INSIGNIAS[paso.tipo];
 
   const ir = (i: number) => setIndice(Math.min(Math.max(i, 0), ultimo));
-  // Saltos desde la línea de tiempo (al inicio del etiquetado de ese paso) y desde la lista de caminos (al camino ya encontrado)
-  const irAlInicio = (j: number) => ir(recorrido.origen.indexOf(j));
-  const irAlPaso = (j: number) => ir(recorrido.origen.lastIndexOf(j));
   const siguiente = () => setIndice((i) => Math.min(i + 1, ultimo));
   const anterior = () => setIndice((i) => Math.max(i - 1, 0));
 
@@ -125,11 +116,9 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
   const avanzando = reproduciendo && !evaluando && indice < ultimo;
   useEffect(() => {
     if (!avanzando) return;
-    // Cada etiqueta dura menos que un paso completo
-    const espera = (paso.tipo === "etiquetando" ? 900 : 1800) / velocidad;
-    const t = setTimeout(() => setIndice((i) => Math.min(i + 1, ultimo)), espera);
+    const t = setTimeout(() => setIndice((i) => Math.min(i + 1, ultimo)), 1800 / velocidad);
     return () => clearTimeout(t);
-  }, [avanzando, indice, velocidad, ultimo, paso.tipo]);
+  }, [avanzando, indice, velocidad, ultimo]);
   const alternarReproduccion = () => {
     if (avanzando) setReproduciendo(false);
     else {
@@ -160,11 +149,11 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
   });
 
   const panel = evaluando ? (
-    <PanelEvaluador datos={datos} ev={ev} flujoMaximo={vistos[ultimo].flujo_total} />
+    <PanelEvaluador datos={datos} ev={ev} flujoMaximo={pasos[ultimo].flujo_total} />
   ) : paso.tipo === "corte_minimo" ? (
-    <Resultado pasos={pasos} paso={paso} datos={datos} onIr={irAlPaso} />
+    <Resultado pasos={pasos} paso={paso} datos={datos} onIr={ir} />
   ) : (
-    <PanelPaso paso={paso} anterior={indice > 0 ? vistos[indice - 1] : undefined} datos={datos} />
+    <PanelPaso paso={paso} anterior={indice > 0 ? pasos[indice - 1] : undefined} datos={datos} />
   );
 
   return (
@@ -244,14 +233,14 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
       {/* Centro: grafo + panel lateral */}
       <div className="flex min-h-0 flex-1">
         <div ref={ref} className="relative min-w-0 flex-1">
-          {w > 0 && h > 0 && (evaluando ? <GrafoEvaluador datos={datos} ev={ev} ancho={anchoDibujo} alto={altoDibujo} /> : <GrafoPaso
+          {w > 0 && h > 0 && (evaluando ? <GrafoEvaluador datos={datos} ev={ev} ancho={w} alto={h} /> : <GrafoPaso
                 datos={datos}
                 paso={paso}
-                anterior={indice > 0 ? vistos[indice - 1] : undefined}
+                anterior={indice > 0 ? pasos[indice - 1] : undefined}
                 idPaso={indice}
                 vista={vista}
-                ancho={anchoDibujo}
-                alto={altoDibujo}
+                ancho={w}
+                alto={h}
                 entrada={entrada && indice === 0}
               />)}
         </div>
@@ -292,8 +281,7 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
             )}
           </Boton>
           <span id="contador-pasos" className="ml-1 font-mono text-sm text-tenue">
-            {real + 1}/{pasos.length}
-            {paso.nueva_etiqueta && ` · etiqueta ${paso.nueva_etiqueta.orden} de ${paso.nueva_etiqueta.total}`}
+            {indice + 1}/{pasos.length}
           </span>
           <Boton tam="sm" variante="secundario" className="ml-auto lg:hidden" onClick={() => setHojaAbierta(true)}>
             Detalles ▴
@@ -337,9 +325,9 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
               </option>
             ))}
           </select>
-          <LineaTiempo pasos={pasos} actual={real} onIr={irAlInicio} deshabilitada={evaluando} />
+          <LineaTiempo pasos={pasos} actual={indice} onIr={ir} deshabilitada={evaluando} />
           <div className="hidden md:block">
-            <GraficaFlujo pasos={pasos} actual={real} />
+            <GraficaFlujo pasos={pasos} actual={indice} />
           </div>
         </div>
       </div>

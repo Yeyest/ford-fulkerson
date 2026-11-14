@@ -1,7 +1,7 @@
 "use client";
 
 import type { Paso } from "@/lib/ff/algoritmo";
-import { type CajaNodo, type Curva, type Punto, cajasEtiquetasNodo, curva, elegirCurvatura } from "@/lib/ff/geometria";
+import { type Curva, type Punto, curva } from "@/lib/ff/geometria";
 import { capATexto, listarAristas } from "@/lib/ff/nombres";
 import Grafo, { type AnimacionArista, type AristaVista, type NodoVista } from "../grafo/Grafo";
 import Lienzo from "../grafo/Lienzo";
@@ -30,22 +30,8 @@ interface Arco {
 /** Separación (px en el punto de control) entre una arista y su flecha de retroceso. */
 const SEPARACION_RETROCESO = 46;
 
-/** Entorno para elegir por dónde van los arcos que acompañan a una arista (nodos, etiquetas y lienzo). */
-interface Entorno {
-  pts: ReadonlyMap<number, Punto>;
-  radio: number;
-  cajas: readonly CajaNodo[];
-  limites: [number, number];
-}
-
-/** Desplazamientos (en curvatura) y separaciones (px) que se prueban para el par de arcos de la red residual. */
-const DESPLAZAMIENTOS_PAR = [0, 0.08, -0.08, 0.16, -0.16, 0.25, -0.25, 0.35, -0.35];
-const SEPARACIONES_PAR = [26, 20, 14];
-/** Separaciones (px) que se prueban para la flecha de retroceso: primero la habitual, luego al otro lado. */
-const SEPARACIONES_RETROCESO = [SEPARACION_RETROCESO, -SEPARACION_RETROCESO, 60, -60, 34, -34];
-
 /** Arcos de la red residual: c − f hacia adelante y f hacia atrás (campo `residual` del paso). */
-function arcosResiduales(paso: Paso, base: Map<string, Curva>, pares: [number, number][], entorno: Entorno): Arco[] {
+function arcosResiduales(paso: Paso, base: Map<string, Curva>, pares: [number, number][]): Arco[] {
   const arcos: Arco[] = [];
   for (const [u, v] of pares) {
     const k = `${u}-${v}`;
@@ -53,20 +39,11 @@ function arcosResiduales(paso: Paso, base: Map<string, Curva>, pares: [number, n
     const adelante = paso.residual[u][v];
     const atras = paso.residual[v][u];
     const largo = Math.hypot(g.p2[0] - g.p1[0], g.p2[1] - g.p1[1]) || 1;
-    if (adelante > 0 && atras > 0) {
-      // Los dos sentidos se dibujan separados, a cada lado de la arista; el par se corre un poco
-      // si así deja de pasar sobre otro nodo o su etiqueta.
-      const opciones = SEPARACIONES_PAR.flatMap((px) =>
-        DESPLAZAMIENTOS_PAR.map((d) => [curva(g.p1, g.p2, g.rad + d + px / largo), curva(g.p2, g.p1, px / largo - g.rad - d)]),
-      );
-      const [ida, vuelta] = opciones[elegirCurvatura(opciones, [u, v], entorno.pts, entorno.radio, entorno.cajas, entorno.limites)];
-      arcos.push({ clave: `${k}+`, u, v, geo: ida, texto: capATexto(adelante), original: k, sentido: "+" });
-      arcos.push({ clave: `${k}-`, u: v, v: u, geo: vuelta, texto: String(atras), original: k, sentido: "-" });
-    } else if (adelante > 0) {
-      arcos.push({ clave: `${k}+`, u, v, geo: g, texto: capATexto(adelante), original: k, sentido: "+" });
-    } else if (atras > 0) {
-      arcos.push({ clave: `${k}-`, u: v, v: u, geo: curva(g.p2, g.p1, -g.rad), texto: String(atras), original: k, sentido: "-" });
-    }
+    const sep = adelante > 0 && atras > 0 ? 26 / largo : 0;
+    if (adelante > 0)
+      arcos.push({ clave: `${k}+`, u, v, geo: sep ? curva(g.p1, g.p2, g.rad + sep) : g, texto: capATexto(adelante), original: k, sentido: "+" });
+    if (atras > 0)
+      arcos.push({ clave: `${k}-`, u: v, v: u, geo: curva(g.p2, g.p1, sep ? sep - g.rad : -g.rad), texto: String(atras), original: k, sentido: "-" });
   }
   return arcos;
 }
@@ -98,8 +75,7 @@ export default function GrafoPaso({
   const { pts, bandas, orientacion } = disponerRed(datos, ancho, alto);
   const med = medidas([...pts.values()], ancho);
   const pares = listarAristas(cap);
-  const base = useGeometria(pts, pares, med.radio, ancho, alto, med.fuenteTag);
-  const entorno: Entorno = { pts, radio: med.radio, cajas: cajasEtiquetasNodo(pts, med.radio, med.fuenteTag), limites: [ancho, alto] };
+  const base = useGeometria(pts, pares, med.radio, ancho, alto);
 
   const caminoMapa = new Map<string, "+" | "-">(paso.aristas_camino.map(([u, v, s]) => [`${u}-${v}`, s]));
   // Orden de cada arista original dentro del camino (para animar el recorrido tramo a tramo)
@@ -126,7 +102,7 @@ export default function GrafoPaso({
               : textoFlujo(paso.flujo[u][v], cap[u][v], s, paso.cuello_botella);
           return { clave: k, u, v, geo: base.get(k)!, texto, original: k, sentido: "+" };
         })
-      : arcosResiduales(paso, base, pares, entorno);
+      : arcosResiduales(paso, base, pares);
 
   // En la red de flujo, cada tramo inverso del camino se dibuja como una flecha propia que va de
   // `desde` a `nodo`, pegada a la arista nodo→desde: así se ve por dónde «regresa» el camino.
@@ -137,38 +113,18 @@ export default function GrafoPaso({
       if (!g) continue;
       const largo = Math.hypot(g.p2[0] - g.p1[0], g.p2[1] - g.p1[1]) || 1;
       const texto = `↩ −${paso.cuello_botella}`;
-      // Junto a la arista, del lado en que no tape otro nodo ni su etiqueta.
-      const opciones = SEPARACIONES_RETROCESO.map((sep) => [curva(g.p2, g.p1, sep / largo - g.rad)]);
-      const [geo] = opciones[elegirCurvatura(opciones, [r.nodo, r.desde], entorno.pts, entorno.radio, entorno.cajas, entorno.limites)];
-      arcos.push({ clave: `ret-${k}`, u: r.desde, v: r.nodo, geo, texto, original: k, sentido: "-", retroceso: r });
+      arcos.push({ clave: `ret-${k}`, u: r.desde, v: r.nodo, geo: curva(g.p2, g.p1, SEPARACION_RETROCESO / largo - g.rad), texto, original: k, sentido: "-", retroceso: r });
     }
 
   const geoArcos = new Map(arcos.map((a) => [a.clave, a.geo]));
   const textos = new Map(arcos.map((a) => [a.clave, a.texto]));
-  const etiquetas = useEtiquetas(geoArcos, textos, pts, ancho, alto, med.radio, med.fuenteEtiqueta, med.fuenteTag);
-
-  // Mientras se etiqueta nodo por nodo: aristas por las que se llegó a cada nodo ya etiquetado
-  // (arista original → signo de la etiqueta) y la de la etiqueta que se acaba de poner.
-  const arbol = new Map<string, "+" | "-">();
-  if (paso.tipo === "etiquetando")
-    for (const [n, e] of paso.etiquetas) if (e.padre !== "-") arbol.set(e.signo === "-" ? `${n}-${e.padre}` : `${e.padre}-${n}`, e.signo === "-" ? "-" : "+");
-  const nueva = paso.nueva_etiqueta;
-  const aristaNueva = nueva && nueva.padre !== null ? (nueva.signo === "-" ? `${nueva.nodo}-${nueva.padre}` : `${nueva.padre}-${nueva.nodo}`) : null;
-  const estiloEtiquetado = (k: string, sentido: "+" | "-"): EstiloArista | null => {
-    const s = arbol.get(k);
-    if (s === undefined || (vista === "residual" && s !== sentido)) return null;
-    const color = s === "+" ? "var(--n-etiquetado-borde)" : "var(--a-inverso)";
-    if (k === aristaNueva) return { color, ancho: 4.5, punteada: s === "-" && vista === "flujo", animacion: s === "+" || vista === "residual" ? "adelante" : "atras" };
-    return { color, ancho: 2.8, punteada: s === "-" && vista === "flujo" };
-  };
+  const etiquetas = useEtiquetas(geoArcos, textos, pts, ancho, alto, med.radio, med.fuenteEtiqueta, true);
 
   const aristas: AristaVista[] = arcos.map((a) => {
     const [u, v] = a.original.split("-").map(Number);
     if (a.retroceso) return aristaRetroceso(a, a.retroceso);
     let estilo: EstiloArista;
-    const etiquetado = paso.tipo === "etiquetando" ? estiloEtiquetado(a.original, a.sentido) : null;
-    if (etiquetado) estilo = etiquetado;
-    else if (vista === "flujo") {
+    if (vista === "flujo") {
       estilo = estiloAristaPaso(u, v, paso, cap[u][v], caminoMapa, corte);
       // Arista recorrida al revés: el camino va por su flecha de retroceso; ella queda en rosa fino
       if (caminoMapa.get(a.original) === "-" && (paso.tipo === "camino_encontrado" || actualizado))

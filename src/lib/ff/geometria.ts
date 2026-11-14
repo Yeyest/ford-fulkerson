@@ -4,7 +4,7 @@
 
 export type Punto = [number, number];
 
-export const CANDIDATOS_RAD = [0, 0.04, -0.04, 0.08, -0.08, 0.12, -0.12, 0.16, -0.16, 0.2, -0.2, 0.25, -0.25, 0.3, -0.3, 0.35, -0.35, 0.42, -0.42, 0.5, -0.5];
+export const CANDIDATOS_RAD = [0.0, 0.08, -0.08, 0.16, -0.16, 0.25, -0.25, 0.35, -0.35, 0.5, -0.5];
 
 export interface Curva {
   rad: number;
@@ -39,93 +39,44 @@ export function curva(p1: Punto, p2: Punto, rad: number): Curva {
   return { rad, p1, p2, ctrl, poli: TS_MUESTREO.map((t) => bezier(p1, p2, ctrl, t)) };
 }
 
-/** Rectángulo que ocupa la etiqueta [p±, Δ] de un nodo (debajo del círculo). */
-export interface CajaNodo {
-  nodo: number;
-  x0: number;
-  y0: number;
-  x1: number;
-  y1: number;
-}
-
-/** Distancia de un punto a un rectángulo: positiva fuera y negativa dentro (profundidad). */
-function distanciaCaja([x, y]: Punto, c: CajaNodo): number {
-  const dx = Math.max(c.x0 - x, x - c.x1);
-  const dy = Math.max(c.y0 - y, y - c.y1);
-  if (dx <= 0 && dy <= 0) return Math.max(dx, dy);
-  return Math.hypot(Math.max(dx, 0), Math.max(dy, 0));
-}
-
-/** Cajas de las etiquetas [p±, Δ] de los nodos, con un ancho fijo para que no cambien de un paso a otro. */
-export function cajasEtiquetasNodo(pts: ReadonlyMap<number, Punto>, radio: number, fuenteTag: number, caracteres = 10): CajaNodo[] {
-  // Por defecto, el ancho de una etiqueta como «[AB+, 99]» (10 caracteres), como se dibuja en Grafo.tsx.
-  const medio = (caracteres * 0.6 * fuenteTag + 10) / 2;
-  return [...pts].map(([nodo, [x, y]]) => ({ nodo, x0: x - medio, x1: x + medio, y0: y + radio + 4, y1: y + radio + 12 + fuenteTag }));
-}
-
-/**
- * Penalización de una curva entre u y v: cuánto se acerca a los demás nodos y, si hay `cajas`,
- * cuánto pasa sobre sus etiquetas. Con `limites`, también cuánto se sale del lienzo.
- */
-export function penalizacionCurva(
-  p1: Punto,
-  p2: Punto,
-  ctrl: Punto,
-  extremos: readonly number[],
-  pts: ReadonlyMap<number, Punto>,
-  radio: number,
-  cajas: readonly CajaNodo[] = [],
-  limites?: [number, number],
-): number {
-  const umbral = radio + 12;
-  const muestras = TS.map((t) => bezier(p1, p2, ctrl, t));
-  let penal = 0;
-  for (const [k, o] of pts) {
-    if (extremos.includes(k)) continue;
-    let d = Infinity;
-    for (const q of muestras) d = Math.min(d, Math.hypot(q[0] - o[0], q[1] - o[1]));
-    const x = Math.max(umbral - d, 0);
-    penal += x * x;
-    // Atravesar un nodo es lo peor: nunca sale más barato que pasar sobre una etiqueta.
-    if (d < radio + 2) penal += 2000;
-  }
-  for (const c of cajas) {
-    if (extremos.includes(c.nodo)) continue;
-    let d = Infinity;
-    for (const q of muestras) d = Math.min(d, distanciaCaja(q, c));
-    const x = Math.max(6 - d, 0);
-    penal += x * x;
-  }
-  if (limites) {
-    const [w, h] = limites;
-    for (const [qx, qy] of muestras) {
-      const fuera = Math.max(12 - qx, qx - (w - 12), 12 - qy, qy - (h - 12), 0);
-      penal += fuera * fuera;
-    }
-  }
-  return penal;
-}
-
 /**
  * Elige para cada arista la curvatura que mejor esquiva los demás nodos.
- * Con `limites` también penaliza las curvas que se salen del lienzo, y con `cajas`
- * las que pasan sobre la etiqueta de otro nodo.
+ * Con `limites` también penaliza las curvas que se salen del lienzo.
  */
 export function calcularGeometriaAristas(
   aristas: readonly [number, number][],
   pts: ReadonlyMap<number, Punto>,
   radio: number,
   limites?: [number, number],
-  cajas: readonly CajaNodo[] = [],
 ): Map<string, Curva> {
+  const umbral = radio + 12;
   const geometria = new Map<string, Curva>();
   for (const [u, v] of aristas) {
     const p1 = pts.get(u)!;
     const p2 = pts.get(v)!;
+    const otros = [...pts].filter(([k]) => k !== u && k !== v).map(([, p]) => p);
     let mejorRad = 0;
     let mejorCosto: number | null = null;
     for (const rad of CANDIDATOS_RAD) {
-      const penal = penalizacionCurva(p1, p2, controlArc3(p1, p2, rad), [u, v], pts, radio, cajas, limites);
+      const ctrl = controlArc3(p1, p2, rad);
+      let penal = 0;
+      for (const o of otros) {
+        let d = Infinity;
+        for (const t of TS) {
+          const q = bezier(p1, p2, ctrl, t);
+          d = Math.min(d, Math.hypot(q[0] - o[0], q[1] - o[1]));
+        }
+        const x = Math.max(umbral - d, 0);
+        penal += x * x;
+      }
+      if (limites) {
+        const [w, h] = limites;
+        for (const t of TS) {
+          const [qx, qy] = bezier(p1, p2, ctrl, t);
+          const fuera = Math.max(12 - qx, qx - (w - 12), 12 - qy, qy - (h - 12), 0);
+          penal += fuera * fuera;
+        }
+      }
       const costo = penal * 10 + Math.abs(rad) * 40;
       if (mejorCosto === null || costo < mejorCosto) {
         mejorCosto = costo;
@@ -135,32 +86,6 @@ export function calcularGeometriaAristas(
     geometria.set(`${u}-${v}`, curva(p1, p2, mejorRad));
   }
   return geometria;
-}
-
-/**
- * Entre varias curvaturas posibles para un arco que acompaña a otra arista (la flecha de
- * retroceso o el par de arcos de la red residual), devuelve el índice de la que menos choca
- * con los nodos y sus etiquetas. Ante un empate gana la primera, que es la habitual.
- */
-export function elegirCurvatura(
-  opciones: readonly (readonly Curva[])[],
-  extremos: readonly number[],
-  pts: ReadonlyMap<number, Punto>,
-  radio: number,
-  cajas: readonly CajaNodo[],
-  limites: [number, number],
-): number {
-  let mejor = 0;
-  let mejorCosto = Infinity;
-  opciones.forEach((curvas, i) => {
-    let costo = i * 1e-6;
-    for (const c of curvas) costo += penalizacionCurva(c.p1, c.p2, c.ctrl, extremos, pts, radio, cajas, limites);
-    if (costo < mejorCosto - 1e-3) {
-      mejorCosto = costo;
-      mejor = i;
-    }
-  });
-  return mejor;
 }
 
 /** Tamaño aproximado de una etiqueta en fuente monoespaciada. */
@@ -179,8 +104,6 @@ export function colocarEtiquetas(
   h: number,
   radio: number,
   dims: ReadonlyMap<string, [number, number]>,
-  /** Rectángulos que las etiquetas no deben tapar (por ejemplo, las etiquetas [p±, Δ] de los nodos). */
-  obstaculos: readonly CajaNodo[] = [],
 ): Map<string, Punto> {
   const claves = [...geometria.keys()];
   const resultado = new Map<string, Punto>();
@@ -191,7 +114,7 @@ export function colocarEtiquetas(
     const gb = geometria.get(b)!;
     return Math.hypot(ga.p2[0] - ga.p1[0], ga.p2[1] - ga.p1[1]) - Math.hypot(gb.p2[0] - gb.p1[0], gb.p2[1] - gb.p1[1]);
   });
-  const tsCandidatos = [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74, 0.2, 0.8, 0.14, 0.86];
+  const tsCandidatos = [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74, 0.2, 0.8];
   const multiplos = [0.0, 1.0, -1.0, 1.8, -1.8];
   const colocadas: [number, number, number, number][] = [];
 
@@ -228,16 +151,7 @@ export function colocarEtiquetas(
         for (const n of centros) {
           const dx = Math.max(Math.abs(n[0] - c[0]) - hw, 0);
           const dy = Math.max(Math.abs(n[1] - c[1]) - hh, 0);
-          const d = Math.hypot(dx, dy);
-          costo += Math.max(radio + 4 - d, 0) * 30;
-          // Tapar un nodo es lo peor que puede pasarle a una etiqueta.
-          if (d < radio) costo += 2000;
-        }
-
-        for (const o of obstaculos) {
-          const ox = Math.min(c[0] + hw, o.x1) - Math.max(c[0] - hw, o.x0) + 2;
-          const oy = Math.min(c[1] + hh, o.y1) - Math.max(c[1] - hh, o.y0) + 2;
-          if (ox > 0 && oy > 0) costo += 300 + 3 * ox * oy;
+          costo += Math.max(radio + 4 - Math.hypot(dx, dy), 0) * 30;
         }
 
         let dentro = 0;

@@ -60,7 +60,7 @@ export function GrafoEvaluador({ datos, ev, ancho, alto }: { datos: DatosRed; ev
   const pares = listarAristas(cap);
   const geo = useGeometria(pts, pares, med.radio, ancho, alto);
   const textos = new Map(pares.map(([u, v]) => [`${u}-${v}`, capATexto(cap[u][v])]));
-  const etiquetas = useEtiquetas(geo, textos, pts, ancho, alto, med.radio, med.fuenteEtiqueta, ev.evaluacion !== null ? med.fuenteTag : undefined, 3);
+  const etiquetas = useEtiquetas(geo, textos, pts, ancho, alto, med.radio, med.fuenteEtiqueta, ev.evaluacion !== null);
   const e = ev.evaluacion;
   const enCorte = new Set((e?.aristasCorte ?? []).map(([u, v]) => `${u}-${v}`));
 
