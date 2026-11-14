@@ -71,6 +71,16 @@ export function nodosSueltos(m: Matriz): number[] {
   return sueltos;
 }
 
+/**
+ * Capacidad de las aristas virtuales S→fuente y sumidero→T.
+ * - "suma" (la que usa la app): S→f vale la suma de las capacidades de salida de f, y s→T la suma de
+ *   las capacidades de entrada de s. Es lo máximo que esa fuente puede enviar (o ese sumidero recibir),
+ *   así que no limita el flujo, y representa mejor un caso real que una capacidad ilimitada.
+ * - "infinito": como el programa original en Python, capacidad INFINITO (∞). Se usa en las pruebas
+ *   que comparan paso a paso con Python.
+ */
+export type CapacidadVirtual = "suma" | "infinito";
+
 export interface RedDeTrabajo {
   nTrabajo: number;
   capacidades: Matriz;
@@ -78,10 +88,30 @@ export interface RedDeTrabajo {
   sumidero: number;
   superFuente: number | null;
   superSumidero: number | null;
+  capacidadVirtual: CapacidadVirtual;
 }
 
-/** preparar_red: agrega S (varias fuentes) y/o T (varios sumideros) con capacidad INFINITO. */
-export function prepararRed(m: Matriz, listaFuentes: readonly number[], listaSumideros: readonly number[]): RedDeTrabajo {
+/**
+ * preparar_red: agrega S (varias fuentes) y/o T (varios sumideros). La capacidad de sus aristas es la
+ * suma de las capacidades de salida de cada fuente (o de entrada de cada sumidero), o INFINITO.
+ */
+export function prepararRed(
+  m: Matriz,
+  listaFuentes: readonly number[],
+  listaSumideros: readonly number[],
+  capacidadVirtual: CapacidadVirtual = "suma",
+): RedDeTrabajo {
+  const n = m.length;
+  const salidaDe = (f: number) => {
+    let total = 0;
+    for (let v = 0; v < n; v++) total += m[f][v];
+    return total;
+  };
+  const entradaDe = (s: number) => {
+    let total = 0;
+    for (let u = 0; u < n; u++) total += m[u][s];
+    return total;
+  };
   let nTrabajo = m.length;
   let capacidades = copiarMatriz(m);
   let superFuente: number | null = null;
@@ -95,7 +125,7 @@ export function prepararRed(m: Matriz, listaFuentes: readonly number[], listaSum
     superFuente = nTrabajo;
     nTrabajo += 1;
     capacidades = agrandar(capacidades);
-    for (const f of listaFuentes) capacidades[superFuente][f] = INFINITO;
+    for (const f of listaFuentes) capacidades[superFuente][f] = capacidadVirtual === "suma" ? salidaDe(f) : INFINITO;
     fuente = superFuente;
   } else {
     fuente = listaFuentes[0];
@@ -105,13 +135,13 @@ export function prepararRed(m: Matriz, listaFuentes: readonly number[], listaSum
     superSumidero = nTrabajo;
     nTrabajo += 1;
     capacidades = agrandar(capacidades);
-    for (const s of listaSumideros) capacidades[s][superSumidero] = INFINITO;
+    for (const s of listaSumideros) capacidades[s][superSumidero] = capacidadVirtual === "suma" ? entradaDe(s) : INFINITO;
     sumidero = superSumidero;
   } else {
     sumidero = listaSumideros[0];
   }
 
-  return { nTrabajo, capacidades, fuente, sumidero, superFuente, superSumidero };
+  return { nTrabajo, capacidades, fuente, sumidero, superFuente, superSumidero, capacidadVirtual };
 }
 
 /** Mensajes de iniciar_programa sobre los nodos virtuales. */
