@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { type Curva, type Punto, cajaTexto, calcularGeometriaAristas, colocarEtiquetas } from "@/lib/ff/geometria";
+import { type Curva, type Punto, cajaTexto, cajasEtiquetasNodo, calcularGeometriaAristas, colocarEtiquetas } from "@/lib/ff/geometria";
 
 /** Tamaño de un elemento, actualizado al cambiar el tamaño de la ventana. */
 export function useTamano<T extends HTMLElement>() {
@@ -17,11 +17,24 @@ export function useTamano<T extends HTMLElement>() {
   return [ref, tam] as const;
 }
 
-/** Curvas de las aristas (fijas para una red y un tamaño) y posición de las etiquetas. */
-export function useGeometria(pts: ReadonlyMap<number, Punto>, aristas: readonly [number, number][], radio: number, ancho: number, alto: number) {
-  const clave = JSON.stringify([[...pts], aristas, radio, ancho, alto]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useMemo(() => calcularGeometriaAristas(aristas, pts, radio, [ancho, alto]), [clave]);
+/**
+ * Curvas de las aristas (fijas para una red y un tamaño) y posición de las etiquetas.
+ * Con `fuenteTag`, las curvas también esquivan la etiqueta [p±, Δ] que va debajo de cada nodo.
+ */
+export function useGeometria(
+  pts: ReadonlyMap<number, Punto>,
+  aristas: readonly [number, number][],
+  radio: number,
+  ancho: number,
+  alto: number,
+  fuenteTag?: number,
+) {
+  const clave = JSON.stringify([[...pts], aristas, radio, ancho, alto, fuenteTag]);
+  return useMemo(() => {
+    const cajas = fuenteTag === undefined ? [] : cajasEtiquetasNodo(pts, radio, fuenteTag);
+    return calcularGeometriaAristas(aristas, pts, radio, [ancho, alto], cajas);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clave]);
 }
 
 export function useEtiquetas(
@@ -32,16 +45,17 @@ export function useEtiquetas(
   alto: number,
   radio: number,
   fuente: number,
-  /** Los nodos llevan debajo su etiqueta [p±, Δ]: también hay que evitarla. */
-  conTags = false,
+  /** Si los nodos llevan debajo su etiqueta [p±, Δ], su tamaño de letra: las etiquetas de las aristas la esquivan. */
+  fuenteTag?: number,
+  /** Largo (en caracteres) de esa etiqueta. */
+  caracteresTag = 10,
 ) {
-  const clave = JSON.stringify([[...textos], ancho, alto, radio, fuente, conTags]);
+  const clave = JSON.stringify([[...textos], ancho, alto, radio, fuente, fuenteTag, caracteresTag]);
   return useMemo(() => {
     const dims = new Map<string, [number, number]>();
     for (const k of geometria.keys()) dims.set(k, cajaTexto(textos.get(k) ?? "", fuente));
-    const centros = [...pts.values()];
-    if (conTags) for (const [x, y] of pts.values()) centros.push([x, y + radio + fuente * 0.9]);
-    return colocarEtiquetas(geometria, centros, ancho, alto, radio, dims);
+    const obstaculos = fuenteTag === undefined ? [] : cajasEtiquetasNodo(pts, radio, fuenteTag, caracteresTag);
+    return colocarEtiquetas(geometria, [...pts.values()], ancho, alto, radio, dims, obstaculos);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geometria, clave]);
 }

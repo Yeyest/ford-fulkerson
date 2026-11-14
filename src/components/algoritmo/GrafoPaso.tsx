@@ -1,7 +1,7 @@
 "use client";
 
 import type { Paso } from "@/lib/ff/algoritmo";
-import { type Curva, type Punto, curva } from "@/lib/ff/geometria";
+import { type CajaNodo, type Curva, type Punto, cajasEtiquetasNodo, curva, elegirCurvatura } from "@/lib/ff/geometria";
 import { capATexto, listarAristas } from "@/lib/ff/nombres";
 import Grafo, { type AnimacionArista, type AristaVista, type NodoVista } from "../grafo/Grafo";
 import Lienzo from "../grafo/Lienzo";
@@ -30,8 +30,21 @@ interface Arco {
 /** Separación (px en el punto de control) entre una arista y su flecha de retroceso. */
 const SEPARACION_RETROCESO = 46;
 
+/** Entorno para elegir por dónde van los arcos que acompañan a una arista (nodos, etiquetas y lienzo). */
+interface Entorno {
+  pts: ReadonlyMap<number, Punto>;
+  radio: number;
+  cajas: readonly CajaNodo[];
+  limites: [number, number];
+}
+
+/** Desplazamientos (en curvatura) que se prueban para el par de arcos de la red residual. */
+const DESPLAZAMIENTOS_PAR = [0, 0.08, -0.08, 0.16, -0.16];
+/** Separaciones (px) que se prueban para la flecha de retroceso: primero la habitual, luego al otro lado. */
+const SEPARACIONES_RETROCESO = [SEPARACION_RETROCESO, -SEPARACION_RETROCESO, 60, -60, 34, -34];
+
 /** Arcos de la red residual: c − f hacia adelante y f hacia atrás (campo `residual` del paso). */
-function arcosResiduales(paso: Paso, base: Map<string, Curva>, pares: [number, number][]): Arco[] {
+function arcosResiduales(paso: Paso, base: Map<string, Curva>, pares: [number, number][], entorno: Entorno): Arco[] {
   const arcos: Arco[] = [];
   for (const [u, v] of pares) {
     const k = `${u}-${v}`;
@@ -39,11 +52,19 @@ function arcosResiduales(paso: Paso, base: Map<string, Curva>, pares: [number, n
     const adelante = paso.residual[u][v];
     const atras = paso.residual[v][u];
     const largo = Math.hypot(g.p2[0] - g.p1[0], g.p2[1] - g.p1[1]) || 1;
-    const sep = adelante > 0 && atras > 0 ? 26 / largo : 0;
-    if (adelante > 0)
-      arcos.push({ clave: `${k}+`, u, v, geo: sep ? curva(g.p1, g.p2, g.rad + sep) : g, texto: capATexto(adelante), original: k, sentido: "+" });
-    if (atras > 0)
-      arcos.push({ clave: `${k}-`, u: v, v: u, geo: curva(g.p2, g.p1, sep ? sep - g.rad : -g.rad), texto: String(atras), original: k, sentido: "-" });
+    if (adelante > 0 && atras > 0) {
+      // Los dos sentidos se dibujan separados, a cada lado de la arista; el par se corre un poco
+      // si así deja de pasar sobre otro nodo o su etiqueta.
+      const sep = 26 / largo;
+      const opciones = DESPLAZAMIENTOS_PAR.map((d) => [curva(g.p1, g.p2, g.rad + d + sep), curva(g.p2, g.p1, sep - g.rad - d)]);
+      const [ida, vuelta] = opciones[elegirCurvatura(opciones, [u, v], entorno.pts, entorno.radio, entorno.cajas, entorno.limites)];
+      arcos.push({ clave: `${k}+`, u, v, geo: ida, texto: capATexto(adelante), original: k, sentido: "+" });
+      arcos.push({ clave: `${k}-`, u: v, v: u, geo: vuelta, texto: String(atras), original: k, sentido: "-" });
+    } else if (adelante > 0) {
+      arcos.push({ clave: `${k}+`, u, v, geo: g, texto: capATexto(adelante), original: k, sentido: "+" });
+    } else if (atras > 0) {
+      arcos.push({ clave: `${k}-`, u: v, v: u, geo: curva(g.p2, g.p1, -g.rad), texto: String(atras), original: k, sentido: "-" });
+    }
   }
   return arcos;
 }
@@ -75,7 +96,8 @@ export default function GrafoPaso({
   const { pts, bandas, orientacion } = disponerRed(datos, ancho, alto);
   const med = medidas([...pts.values()], ancho);
   const pares = listarAristas(cap);
-  const base = useGeometria(pts, pares, med.radio, ancho, alto);
+  const base = useGeometria(pts, pares, med.radio, ancho, alto, med.fuenteTag);
+  const entorno: Entorno = { pts, radio: med.radio, cajas: cajasEtiquetasNodo(pts, med.radio, med.fuenteTag), limites: [ancho, alto] };
 
   const caminoMapa = new Map<string, "+" | "-">(paso.aristas_camino.map(([u, v, s]) => [`${u}-${v}`, s]));
   // Orden de cada arista original dentro del camino (para animar el recorrido tramo a tramo)
@@ -102,7 +124,7 @@ export default function GrafoPaso({
               : textoFlujo(paso.flujo[u][v], cap[u][v], s, paso.cuello_botella);
           return { clave: k, u, v, geo: base.get(k)!, texto, original: k, sentido: "+" };
         })
-      : arcosResiduales(paso, base, pares);
+      : arcosResiduales(paso, base, pares, entorno);
 
   // En la red de flujo, cada tramo inverso del camino se dibuja como una flecha propia que va de
   // `desde` a `nodo`, pegada a la arista nodo→desde: así se ve por dónde «regresa» el camino.
@@ -113,12 +135,15 @@ export default function GrafoPaso({
       if (!g) continue;
       const largo = Math.hypot(g.p2[0] - g.p1[0], g.p2[1] - g.p1[1]) || 1;
       const texto = `↩ −${paso.cuello_botella}`;
-      arcos.push({ clave: `ret-${k}`, u: r.desde, v: r.nodo, geo: curva(g.p2, g.p1, SEPARACION_RETROCESO / largo - g.rad), texto, original: k, sentido: "-", retroceso: r });
+      // Junto a la arista, del lado en que no tape otro nodo ni su etiqueta.
+      const opciones = SEPARACIONES_RETROCESO.map((sep) => [curva(g.p2, g.p1, sep / largo - g.rad)]);
+      const [geo] = opciones[elegirCurvatura(opciones, [r.nodo, r.desde], entorno.pts, entorno.radio, entorno.cajas, entorno.limites)];
+      arcos.push({ clave: `ret-${k}`, u: r.desde, v: r.nodo, geo, texto, original: k, sentido: "-", retroceso: r });
     }
 
   const geoArcos = new Map(arcos.map((a) => [a.clave, a.geo]));
   const textos = new Map(arcos.map((a) => [a.clave, a.texto]));
-  const etiquetas = useEtiquetas(geoArcos, textos, pts, ancho, alto, med.radio, med.fuenteEtiqueta, true);
+  const etiquetas = useEtiquetas(geoArcos, textos, pts, ancho, alto, med.radio, med.fuenteEtiqueta, med.fuenteTag);
 
   const aristas: AristaVista[] = arcos.map((a) => {
     const [u, v] = a.original.split("-").map(Number);
