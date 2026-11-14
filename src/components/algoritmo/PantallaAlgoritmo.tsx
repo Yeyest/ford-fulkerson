@@ -18,7 +18,7 @@ import LineaTiempo from "./LineaTiempo";
 import PanelPaso from "./PanelPaso";
 import Resultado from "./Resultado";
 import { usaFlujoInverso } from "./inverso";
-import { type DatosRed, crearDatosRed, iteracionDe } from "./red";
+import { type DatosRed, crearDatosRed, iteracionDe, tamanoDibujo } from "./red";
 
 interface Props {
   matriz: Matriz;
@@ -99,6 +99,7 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
   const [velocidad, setVelocidad] = useState(1);
   const [hojaAbierta, setHojaAbierta] = useState(false);
   const [ref, { w, h }] = useTamano<HTMLDivElement>();
+  const [anchoDibujo, altoDibujo] = tamanoDibujo(datos, w, h);
   const ev = useEvaluador(datos);
   // Animación de entrada de la red al empezar el algoritmo
   // (el tiempo empieza a contar cuando la red ya tiene tamaño y se ve)
@@ -241,14 +242,14 @@ function Pantalla({ datos, pasos, onEditar, onReiniciar }: { datos: DatosRed; pa
       {/* Centro: grafo + panel lateral */}
       <div className="flex min-h-0 flex-1">
         <div ref={ref} className="relative min-w-0 flex-1">
-          {w > 0 && h > 0 && (evaluando ? <GrafoEvaluador datos={datos} ev={ev} ancho={w} alto={h} /> : <GrafoPaso
+          {w > 0 && h > 0 && (evaluando ? <GrafoEvaluador datos={datos} ev={ev} ancho={anchoDibujo} alto={altoDibujo} /> : <GrafoPaso
                 datos={datos}
                 paso={paso}
                 anterior={indice > 0 ? pasos[indice - 1] : undefined}
                 idPaso={indice}
                 vista={vista}
-                ancho={w}
-                alto={h}
+                ancho={anchoDibujo}
+                alto={altoDibujo}
                 entrada={entrada && indice === 0}
               />)}
         </div>

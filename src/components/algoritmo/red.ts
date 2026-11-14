@@ -34,6 +34,28 @@ export function disponerRed(d: DatosRed, w: number, h: number): Disposicion {
   };
 }
 
+/** Espacio mínimo (px del dibujo) por columna y por nodo de la columna más llena, más el de los títulos. */
+const ANCHO_COLUMNA = 130;
+const ALTO_NODO = 75;
+const MARGEN_VERTICAL = 90;
+
+/**
+ * Tamaño con el que se dibuja la red en un lienzo de w × h. Si la red es densa (muchas columnas o
+ * muchos nodos apilados) y el lienzo le queda chico, se dibuja más grande con la misma proporción y
+ * el lienzo la reduce para que entre: así los números y las etiquetas no se tapan entre sí.
+ */
+export function tamanoDibujo(d: DatosRed, w: number, h: number): [number, number] {
+  if (w <= 0 || h <= 0 || orientacionPara(w, h) !== "horizontal") return [w, h];
+  const porColumna = new Map<number, number>();
+  for (const [x] of d.layout.posiciones.values()) {
+    const k = Math.round(x * 1000);
+    porColumna.set(k, (porColumna.get(k) ?? 0) + 1);
+  }
+  const masLlena = Math.max(1, ...porColumna.values());
+  const k = Math.max(1, (d.layout.encabezados.length * ANCHO_COLUMNA) / w, (masLlena * ALTO_NODO + MARGEN_VERTICAL) / h);
+  return [w * k, h * k];
+}
+
 /** Número de iteración de cada paso (0 = inicio). */
 export function iteracionDe(pasos: Paso[], i: number): number {
   let k = 0;

@@ -4,7 +4,7 @@
 
 export type Punto = [number, number];
 
-export const CANDIDATOS_RAD = [0.0, 0.08, -0.08, 0.16, -0.16, 0.25, -0.25, 0.35, -0.35, 0.5, -0.5];
+export const CANDIDATOS_RAD = [0, 0.04, -0.04, 0.08, -0.08, 0.12, -0.12, 0.16, -0.16, 0.2, -0.2, 0.25, -0.25, 0.3, -0.3, 0.35, -0.35, 0.42, -0.42, 0.5, -0.5];
 
 export interface Curva {
   rad: number;
@@ -86,14 +86,15 @@ export function penalizacionCurva(
     for (const q of muestras) d = Math.min(d, Math.hypot(q[0] - o[0], q[1] - o[1]));
     const x = Math.max(umbral - d, 0);
     penal += x * x;
+    // Atravesar un nodo es lo peor: nunca sale más barato que pasar sobre una etiqueta.
+    if (d < radio + 2) penal += 2000;
   }
   for (const c of cajas) {
     if (extremos.includes(c.nodo)) continue;
     let d = Infinity;
     for (const q of muestras) d = Math.min(d, distanciaCaja(q, c));
-    // Pesa menos que pasar cerca de un nodo: es preferible tapar una etiqueta a cruzar un nodo.
     const x = Math.max(6 - d, 0);
-    penal += x * x * 0.25;
+    penal += x * x;
   }
   if (limites) {
     const [w, h] = limites;

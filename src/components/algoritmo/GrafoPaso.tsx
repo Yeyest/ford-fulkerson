@@ -38,8 +38,9 @@ interface Entorno {
   limites: [number, number];
 }
 
-/** Desplazamientos (en curvatura) que se prueban para el par de arcos de la red residual. */
-const DESPLAZAMIENTOS_PAR = [0, 0.08, -0.08, 0.16, -0.16];
+/** Desplazamientos (en curvatura) y separaciones (px) que se prueban para el par de arcos de la red residual. */
+const DESPLAZAMIENTOS_PAR = [0, 0.08, -0.08, 0.16, -0.16, 0.25, -0.25, 0.35, -0.35];
+const SEPARACIONES_PAR = [26, 20, 14];
 /** Separaciones (px) que se prueban para la flecha de retroceso: primero la habitual, luego al otro lado. */
 const SEPARACIONES_RETROCESO = [SEPARACION_RETROCESO, -SEPARACION_RETROCESO, 60, -60, 34, -34];
 
@@ -55,8 +56,9 @@ function arcosResiduales(paso: Paso, base: Map<string, Curva>, pares: [number, n
     if (adelante > 0 && atras > 0) {
       // Los dos sentidos se dibujan separados, a cada lado de la arista; el par se corre un poco
       // si así deja de pasar sobre otro nodo o su etiqueta.
-      const sep = 26 / largo;
-      const opciones = DESPLAZAMIENTOS_PAR.map((d) => [curva(g.p1, g.p2, g.rad + d + sep), curva(g.p2, g.p1, sep - g.rad - d)]);
+      const opciones = SEPARACIONES_PAR.flatMap((px) =>
+        DESPLAZAMIENTOS_PAR.map((d) => [curva(g.p1, g.p2, g.rad + d + px / largo), curva(g.p2, g.p1, px / largo - g.rad - d)]),
+      );
       const [ida, vuelta] = opciones[elegirCurvatura(opciones, [u, v], entorno.pts, entorno.radio, entorno.cajas, entorno.limites)];
       arcos.push({ clave: `${k}+`, u, v, geo: ida, texto: capATexto(adelante), original: k, sentido: "+" });
       arcos.push({ clave: `${k}-`, u: v, v: u, geo: vuelta, texto: String(atras), original: k, sentido: "-" });
