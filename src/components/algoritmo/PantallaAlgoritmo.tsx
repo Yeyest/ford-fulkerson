@@ -31,15 +31,7 @@ export default function PantallaAlgoritmo({ matriz, roles, onEditar, onReiniciar
   const calculo = useMemo(() => {
     try {
       const red = prepararRed(matriz, roles.fuentes, roles.sumideros);
-      const pasos = generarPasosFordFulkerson(
-        red.nTrabajo,
-        red.capacidades,
-        red.fuente,
-        red.sumidero,
-        red.superFuente,
-        red.superSumidero,
-        red.capacidadVirtual,
-      );
+      const pasos = generarPasosFordFulkerson(red.nTrabajo, red.capacidades, red.fuente, red.sumidero, red.superFuente, red.superSumidero);
       const layout = calcularPosicionesNodos(red.nTrabajo, red.capacidades, roles.fuentes, roles.sumideros, red.superFuente, red.superSumidero);
       return { datos: crearDatosRed(red, layout, roles), pasos, error: null };
     } catch (e) {

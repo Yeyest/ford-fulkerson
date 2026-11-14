@@ -91,7 +91,12 @@ export function expandirEtiquetado(pasos: Paso[], d: DatosRed): Recorrido {
           const ePadre = p.etiquetas.get(padre)!;
           const P = nom(padre);
           const V = nom(nodo);
-          if (signo === "+") {
+          if (signo === "+" && cap[padre][nodo] >= 99999) {
+            // Arista virtual de S o hacia T: capacidad ∞, no limita el Δ
+            descripcion =
+              `Se examina ${P}: la arista ${P}→${V} es una conexión virtual con capacidad ∞, ` +
+              `así que ${V} se etiqueta [${P}+, ${deltaTexto(e.delta)}].\nΔ = mín(${deltaTexto(ePadre.delta)}, ∞) = ${deltaTexto(e.delta)}.`;
+          } else if (signo === "+") {
             const c = cap[padre][nodo];
             const f = p.flujo[padre][nodo];
             descripcion =

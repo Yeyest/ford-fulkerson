@@ -1,7 +1,6 @@
 // Ford-Fulkerson con etiquetado [padre±, Δ] (buscar_camino_con_etiquetas,
 // generar_pasos_ford_fulkerson y las verificaciones). Réplica exacta de Python.
 import { INFINITO, type Matriz, copiarMatriz, matrizCeros, nombreNodo } from "./nombres.ts";
-import type { CapacidadVirtual } from "./red.ts";
 
 /** Etiqueta de un nodo: (padre, signo, Δ). La fuente lleva ('-', '', INFINITO). */
 export interface Etiqueta {
@@ -142,7 +141,6 @@ export function generarPasosFordFulkerson(
   sumidero: number,
   superFuente: number | null = null,
   superSumidero: number | null = null,
-  capacidadVirtual: CapacidadVirtual = "infinito",
 ): Paso[] {
   const nom = (u: number) => nombreNodo(u, superFuente, superSumidero);
 
@@ -172,17 +170,7 @@ export function generarPasosFordFulkerson(
   };
 
   let descInicio = "Flujo 0 en todas las aristas (cumple 0 ≤ f ≤ c).\n";
-  if (capacidadVirtual === "suma") {
-    if (superFuente !== null && superSumidero !== null) {
-      descInicio +=
-        "Los nodos S y T son virtuales: S se conecta a cada fuente con la suma de sus capacidades de salida, " +
-        "y cada sumidero se conecta a T con la suma de sus capacidades de entrada.\n";
-    } else if (superFuente !== null) {
-      descInicio += "El nodo S es una super-fuente virtual: se conecta a cada fuente con la suma de sus capacidades de salida.\n";
-    } else if (superSumidero !== null) {
-      descInicio += "El nodo T es un super-sumidero virtual: cada sumidero se conecta a T con la suma de sus capacidades de entrada.\n";
-    }
-  } else if (superFuente !== null && superSumidero !== null) {
+  if (superFuente !== null && superSumidero !== null) {
     descInicio += "Los nodos S y T son virtuales y se conectan con capacidad ∞.\n";
   } else if (superFuente !== null) {
     descInicio += "El nodo S es una super-fuente virtual (capacidad ∞ hacia cada fuente).\n";
