@@ -7,7 +7,7 @@ import { capATexto, listarAristas } from "@/lib/ff/nombres";
 import Grafo, { type AristaVista, type NodoVista } from "../grafo/Grafo";
 import Lienzo from "../grafo/Lienzo";
 import { medidas } from "../grafo/escala";
-import { TEXTO_OSCURO, estiloNodoBase } from "../grafo/estilos";
+import { estiloNodoBase, estiloNodoLado } from "../grafo/estilos";
 import { useEtiquetas, useGeometria } from "../grafo/hooks";
 import { IconoCorte, TAM_ICONO } from "../iconos";
 import { Boton, Insignia } from "../ui";
@@ -92,10 +92,8 @@ export function GrafoEvaluador({ datos, ev, ancho, alto }: { datos: DatosRed; ev
       id,
       nombre: nom(id),
       p,
-      relleno: enS ? "var(--n-lado-s)" : "var(--n-intermedio)",
-      borde: sumideroEnS ? "var(--a-corte)" : enS ? "var(--n-lado-s-borde)" : "var(--n-lado-t-borde)",
-      grosor: sumideroEnS ? 4 : enS ? 3 : 1.5,
-      colorTexto: TEXTO_OSCURO,
+      ...estiloNodoLado(enS, estiloNodoBase(id, ctx).punteado),
+      ...(sumideroEnS ? { borde: "var(--a-corte)", grosor: 4 } : {}),
       tag: { texto: enS ? "[S]" : "[T]", fondo: enS ? "var(--t-fuente)" : "var(--t-vacia)", color: enS ? "#1d4ed8" : "#52525b" },
       rotulo: `Nodo ${nom(id)}, lado ${enS ? "S" : "T"}`,
     };

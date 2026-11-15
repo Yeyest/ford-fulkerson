@@ -10,6 +10,8 @@ const NODOS = [
   { texto: "Intermedio", relleno: "var(--n-intermedio)", borde: "var(--n-intermedio-borde)" },
   { texto: "Etiquetado en la iteración", relleno: "var(--n-etiquetado)", borde: "var(--n-etiquetado-borde)" },
   { texto: "En el camino aumentante", relleno: "var(--n-camino)", borde: "var(--n-camino-borde)" },
+  { texto: "Corte: lado S (de la fuente)", relleno: "var(--n-lado-s)", borde: "var(--n-lado-s-borde)" },
+  { texto: "Corte: lado T (del sumidero)", relleno: "var(--n-intermedio)", borde: "var(--n-lado-t-borde)" },
 ];
 
 const ARISTAS = [

@@ -117,6 +117,8 @@ describe("acciones del editor", () => {
       for (let v = 0; v < 10; v++) {
         if (e.matriz[u][v] > 0) continue;
         const r = crearArista(e, String(u), String(v), "1");
+        // El límite de conexiones se revisa antes que el ciclo: en ese caso no se sabe si cerraría uno
+        if (r.mensajes.some((m) => m.texto.includes("conexiones"))) continue;
         const rechazada = r.mensajes.some((m) => m.texto.includes("ciclo") || m.texto.includes("auto-bucle"));
         assert.equal(prohibidos.has(v), rechazada, `${u}->${v}`);
       }
@@ -171,21 +173,21 @@ describe("tope de capacidad", () => {
 });
 
 describe("límite de conexiones por nodo", () => {
-  test("validarArista rechaza la sexta salida o la sexta entrada, pero deja cambiar una arista existente", async () => {
+  test("validarArista rechaza una salida o una entrada de más, pero deja cambiar una arista existente", async () => {
     const { validarArista } = await import("../src/lib/ff/entrada.ts");
     const { CONEXIONES_MAX } = await import("../src/lib/ff/grafo.ts");
     const { matrizCeros } = await import("../src/lib/ff/nombres.ts");
     const m = matrizCeros(8);
-    for (let v = 1; v <= CONEXIONES_MAX; v++) m[0][v] = 3; // A → B…F
+    for (let v = 1; v <= CONEXIONES_MAX; v++) m[0][v] = 3; // A → B, C, D
     const r = validarArista(m, "A,G,4");
     assert.equal(r.tipo === "error" && r.causa, "limite");
-    assert.match(r.tipo === "error" ? r.texto : "", /A ya tiene 5 conexiones salientes/);
+    assert.match(r.tipo === "error" ? r.texto : "", new RegExp(`A ya tiene ${CONEXIONES_MAX} conexiones salientes`));
     assert.equal(validarArista(m, "A,B,7").tipo, "confirmar");
 
     const e = matrizCeros(8);
-    for (let u = 0; u < CONEXIONES_MAX; u++) e[u][7] = 3; // A…E → H
+    for (let u = 0; u < CONEXIONES_MAX; u++) e[u][7] = 3; // A, B, C → H
     const r2 = validarArista(e, "F,H,4");
-    assert.match(r2.tipo === "error" ? r2.texto : "", /H ya tiene 5 conexiones entrantes/);
+    assert.match(r2.tipo === "error" ? r2.texto : "", new RegExp(`H ya tiene ${CONEXIONES_MAX} conexiones entrantes`));
   });
 
   test("el editor marca los destinos llenos y el texto importado respeta el límite", async () => {
@@ -193,15 +195,15 @@ describe("límite de conexiones por nodo", () => {
     const { textoAGrafo } = await import("../src/lib/ff/archivo.ts");
     const { matrizCeros } = await import("../src/lib/ff/nombres.ts");
     const m = matrizCeros(8);
-    for (let u = 0; u < 5; u++) m[u][7] = 3;
+    for (let u = 0; u < 3; u++) m[u][7] = 3;
     assert.equal(motivosProhibidos(m, 5).get(7), "entrada");
     assert.equal(motivosProhibidos(m, 0).has(7), false); // A→H ya existe: se puede editar
-    const t = textoAGrafo("A,H,1\nB,H,1\nC,H,1\nD,H,1\nE,H,1\nF,H,1");
+    const t = textoAGrafo("A,H,1\nB,H,1\nC,H,1\nD,H,1");
     assert.equal(t.ok, false);
-    assert.match(t.ok ? "" : t.error, /Línea 6: H ya tiene 5 conexiones entrantes/);
+    assert.match(t.ok ? "" : t.error, /Línea 4: H ya tiene 3 conexiones entrantes/);
   });
 
-  test("con límite, el generador nunca supera 5 entradas ni 5 salidas y, si Python ya lo cumple, da el mismo grafo", () => {
+  test("con límite, el generador nunca supera el límite de entradas ni de salidas y, si Python ya lo cumple, da el mismo grafo", () => {
     const casos: [number, number[], number[]][] = [[10, [0], [9]], [12, [0], [11]], [16, [0], [15]], [16, [0, 1], [14, 15]], [16, [0], [1, 2, 3, 4, 5, 6, 7, 8]]];
     for (const [n, F, S] of casos)
       for (let s = 1; s <= 150; s++) {

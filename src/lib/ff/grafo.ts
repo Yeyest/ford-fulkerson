@@ -4,7 +4,7 @@ import { type Matriz, matrizCeros } from "./nombres.ts";
 import { PyRandom } from "./pyrandom.ts";
 
 /** Máximo de conexiones entrantes y de conexiones salientes de cada nodo (sin contar S y T virtuales). */
-export const CONEXIONES_MAX = 5;
+export const CONEXIONES_MAX = 3;
 
 /** Cantidad de aristas que salen de u. */
 export function gradoSalida(m: Matriz, u: number): number {
@@ -186,7 +186,7 @@ export function generarGrafoAleatorio(
     }
 
     // Con límite: un nodo que se quedó sin salidas se conecta con alguno de las capas siguientes
-    // que aún admita una entrada. Si están llenas (por ejemplo, un único sumidero con 5 entradas),
+    // que aún admita una entrada. Si están llenas (por ejemplo, un único sumidero con todas sus entradas ocupadas),
     // se conecta con otro nodo que ya tenga salida, sin cerrar un ciclo, para que el flujo pueda
     // seguir por él. Sin límite esto nunca pasa: cada nodo tiene al menos una salida.
     for (const u of actual) {
@@ -199,7 +199,24 @@ export function generarGrafoAleatorio(
       const puente = capas
         .flat()
         .filter((w) => w !== u && entrada[w] < limite && salida[w] > 0 && buscarCaminoDirigido(m, w, u) === null);
-      if (puente.length) poner(u, rnd.choice(puente), rnd.randint(5, 25));
+      if (puente.length) {
+        poner(u, rnd.choice(puente), rnd.randint(5, 25));
+        continue;
+      }
+      // Último recurso: u toma el lugar de una arista x→v hacia una capa siguiente, donde x tiene
+      // otras salidas. Así v conserva sus entradas, x sigue teniendo salida y u deja de ser un callejón.
+      const cambios: [number, number][] = [];
+      for (const v of capas.slice(i + 1).flat())
+        if (buscarCaminoDirigido(m, v, u) === null)
+          for (let x = 0; x < cantidadNodos; x++) if (x !== u && m[x][v] > 0 && salida[x] > 1) cambios.push([x, v]);
+      if (cambios.length) {
+        const [x, v] = rnd.choice(cambios);
+        const c = m[x][v];
+        m[x][v] = 0;
+        salida[x] -= 1;
+        entrada[v] -= 1;
+        poner(u, v, c);
+      }
     }
   }
   return m;

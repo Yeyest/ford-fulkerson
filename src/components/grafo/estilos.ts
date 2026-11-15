@@ -40,6 +40,16 @@ export function estiloNodoBase(u: number, c: ContextoRoles): EstiloNodo {
   return { relleno: "var(--n-intermedio)", borde: "var(--n-intermedio-borde)", grosor: 1.5, colorTexto: TEXTO_OSCURO };
 }
 
+/**
+ * Nodo según su lado del corte: lado S (el de la fuente) en azul y lado T (el del sumidero) en gris.
+ * Lo usan el resultado del algoritmo y el evaluador de cortes, para que se vean igual.
+ */
+export function estiloNodoLado(enS: boolean, punteado?: boolean): EstiloNodo {
+  return enS
+    ? { relleno: "var(--n-lado-s)", borde: "var(--n-lado-s-borde)", grosor: 3, colorTexto: TEXTO_OSCURO, punteado }
+    : { relleno: "var(--n-intermedio)", borde: "var(--n-lado-t-borde)", grosor: 1.5, colorTexto: TEXTO_OSCURO, punteado };
+}
+
 /** estilo_nodo de Python. */
 export function estiloNodoPaso(u: number, paso: Paso, c: ContextoRoles): EstiloNodo {
   const { tipo, etiquetas, nodos_camino } = paso;
@@ -47,6 +57,8 @@ export function estiloNodoPaso(u: number, paso: Paso, c: ContextoRoles): EstiloN
   // Etiqueta puesta en esta iteración (las de iteraciones anteriores no resaltan el nodo)
   const vigente = paso.etiquetas_nuevas ? paso.etiquetas_nuevas.has(u) : etiquetas.has(u);
   const base = estiloNodoBase(u, c);
+  // Resultado final: cada nodo con el color de su lado del corte (S = alcanzables desde la fuente)
+  if (tipo === "corte_minimo" && paso.conjunto_alcanzable) return estiloNodoLado(paso.conjunto_alcanzable.has(u), base.punteado);
   let relleno = base.relleno;
   const especial = u === c.superFuente || u === c.superSumidero || c.fuentes.has(u) || c.sumideros.has(u);
   if (!especial) {
